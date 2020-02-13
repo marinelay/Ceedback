@@ -11,7 +11,7 @@ and aexp =
 
 and lv =
    | Var of var
-   | Arr of var * var
+   | Arr of var * aexp (* 원랜 var * var 였는데 var * aexp 가 맞는듯 일단*)
 
 and bexp = 
    | True
