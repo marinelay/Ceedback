@@ -1,5 +1,3 @@
-open Vocab
-
 type bop = Plus | Minus | Mult | Div | Mod
 and var = string
 
@@ -36,13 +34,116 @@ type value =
   | VInt of int 
   | VArr of int list
 
-let rec ts_aexp : aexp -> string
+type prog = var list * cmd * var
+
+type example = value
+type examples = example list
+
+let exp_hole_count = ref 0
+let gen_hole_aexp : unit -> aexp
+= fun () -> exp_hole_count:=!exp_hole_count+1; AHole (!exp_hole_count)
+let gen_hole_bexp : unit -> bexp
+= fun () -> exp_hole_count:=!exp_hole_count+1; BHole (!exp_hole_count)
+let gen_hole_cmd : unit -> cmd
+= fun () -> exp_hole_count:=!exp_hole_count+1; CHole (!exp_hole_count)
+
+module Memory = struct
+  type t = (var,value) BatMap.t
+  let add = BatMap.add
+  let mem = BatMap.mem
+  let find x m = BatMap.find x m 
+  let empty = BatMap.empty
+end
+
+exception BufferOverFlow
+
+let rec eval_aexp : aexp -> Memory.t -> value
+= fun aexp mem ->
+  match aexp with
+  | Int n -> VInt n
+  | Lv lv -> eval_lv lv mem
+  | BinOpLv -> (bop, e1, e2) -> eval_bop bop (eval_aexp e1 mem) (eval_aexp e2 mem)
+  | AHole _ -> raise (Failure "eval_aexp : hole encountered")
+
+and eval_lv : lv -> Memory.t -> value
+= fun lv mem ->
+  match lv with
+  | Var x -> Memory.find x mem
+  | Arr (x,e) ->
+    (match Memory.find x mem, (eval_aexp e mem) with
+    | VArr lst, VInt idx ->
+      let size = List.length lst in
+        if idx < 0 || idx >= size then raise BufferOverFlow
+        else VInt (List.nth lst idx)
+    | _ -> raise (Failure "imp.ml : eval_lv - variable type error")) 
+    )
+
+and value2int : value -> int
+= fun value -> 
+  match value with 
+  | VInt n -> n 
+  | _ -> raise (Failure "array value is not integer type")
+
+and eval_bop : bop -> value -> value -> value
+= fun bop v1 v2 ->
+  match bop with
+  | Plus  -> VInt ((value2int v1) + (value2int v2))
+  | Minus -> VInt ((value2int v1) - (value2int v2))
+  | Mult  -> VInt ((value2int v1) * (value2int v2))
+  | Div   -> VInt ((value2int v1) / (value2int v2))
+  | Mod   -> VInt ((value2int v1) mod (value2int v2))
+
+and eval_bexp : bexp -> Memory.t -> bool
+= fun bexp mem ->
+  match bexp with
+  | True -> true 
+  | False -> false
+  | Gt (e1,e2) -> (value2int (eval_aexp e1 mem)) > (value2int (eval_aexp e2 mem))
+  | Lt (e1,e2) -> (value2int (eval_aexp e1 mem)) < (value2int (eval_aexp e2 mem))
+  | Eq (e1,e2) -> (value2int (eval_aexp e1 mem)) = (value2int (eval_aexp e2 mem)) 
+  | Not b -> not (eval_bexp b mem) 
+  | Or (b1,b2) -> (eval_bexp b1 mem) || (eval_bexp b2 mem)
+  | And (b1,b2) -> (eval_bexp b1 mem) && (eval_bexp b2 mem)
+  | BHole _ -> raise (Failure "eval_bexp: hole encountered")
+
+and eval_cmd : cmd -> Memory.t -> Memory.t
+= fun cmd mem ->
+  match cmd with
+  | Assign (Var x, aexp) -> Memory.add x (eval_aexp aexp mem) mem
+  | Assign (Arr (x, e), aexp) ->
+    (match Memory.find x mem, (eval_aexp e mem) with
+    | VArr lst, VInt idx ->
+      let size = List.length lst ->
+        if (idx < 0) || (idx >= size) then raise BufferOverFlow
+        else
+          Memory.add x (VArr (BatList.modify_at idx (fun v -> value2int (eval_aexp aexp mem)) lst)) mem
+    | _ -> raise (Failure "imp.ml - eval_cmd : variable type error"))
+    )
+  | Seq (c1, c2) -> eval_cmd c2 (eval_cmd c1 mem)
+  | If (b, c1, c2) ->
+    if eval_bexp b mem then eval_cmd c1 mem else eval_cmd c2 mem
+  | While (b,c) ->
+    if eval_bexp b mem then eval_cmd (eval_cmd c mem) else mem
+  | Skip -> mem
+  | CHole _ -> raise (Failure "eval_cmd: hole encountered")
+
+let rec value_equality : value -> value -> bool
+= fun v1 v2 ->
+  match v1, v2
+  | VInt n1, VInt n2 -> n1=n2
+
+let run : prog -> value list -> value (* input = value list *)
+= fun (args,cmd,res) input_params ->
+  let init_mem = 
+  List.fold_left2 (fun mem x v -> Memory.add x v mem) Memory.empty args input_params in
+    let r = Memory.find res (eval_cmd cmd init_mem) in
+      r
+(* let rec ts_aexp : aexp -> string
 = fun aexp -> 
   match aexp with
   | Int n -> string_of_int n
   | Lv lv -> ts_lv lv
   | BinOpLv (bop,lv1,lv2) -> ts_lv lv1 ^ ts_bop bop ^ ts_lv lv2
-  | BinOpN (bop,lv,n) -> ts_lv lv ^ ts_bop bop ^ string_of_int n 
   | AHole _ -> "?" 
 
 and ts_lv : lv -> string
@@ -65,8 +166,7 @@ and ts_bexp : bexp -> string
   match bexp with
   | True -> "true" 
   | False -> "false"
-  | GtLv (lv1,lv2) -> ts_aexp (Lv lv1) ^ " > " ^ ts_aexp (Lv lv2)
-  | GtN (lv,n) -> ts_aexp (Lv lv) ^ " > " ^ ts_aexp (Int n)
+  | Gt (lv1,lv2) -> ts_aexp (Lv lv1) ^ " > " ^ ts_aexp (Lv lv2)
   | LtLv (lv1,lv2) -> ts_aexp (Lv lv1) ^ " < "  ^ ts_aexp (Lv lv2)
   | LtN (lv,n) -> ts_aexp (Lv lv) ^ " < " ^ ts_aexp (Int n)
   | EqLv (lv1,lv2) -> ts_aexp (Lv lv1) ^ " == " ^ ts_aexp (Lv lv2)
@@ -112,4 +212,4 @@ let ts_pgm_rows : pgm -> string
   List.fold_left (fun acc var -> acc ^ var ^ " ") "" vars ^ 
   "->\n" ^
   ts_cmd_rows cmd ^
-  "return " ^ var ^ ";"
+  "return " ^ var ^ ";" *)
