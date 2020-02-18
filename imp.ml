@@ -36,7 +36,7 @@ type value =
 
 type prog = var list * cmd * var
 
-type example = value
+type example = value list * value
 type examples = example list
 
 let exp_hole_count = ref 0
@@ -56,6 +56,46 @@ module Memory = struct
 end
 
 exception BufferOverFlow
+
+let rec cost_a : aexp -> int
+= fun aexp ->
+  match aexp with
+  | Int _ -> 10
+  | Lv _ -> 10
+  | BinOpLv (Mod,_,_) -> 10 
+  | BinOpLv (Div,_,_) -> 10 
+  | BinOpLv (_,_,_) -> 10
+  | BinOpN (_,_,_) -> 10
+  | AHole _ -> 80 
+
+let rec cost_b : bexp -> int
+= fun bexp ->
+  match bexp with
+  | True -> 25
+  | False -> 25
+  | GtLv (_,_) -> 10
+  | GtN (_,_) -> 10
+  | LtLv (_,_) -> 10
+  | LtN (_,_) -> 10
+  | EqLv (_,_) -> 10
+  | EqN (_,_) -> 10
+  | Not b -> 5 + cost_b b
+  | Or (b1,b2) -> 5 + cost_b b1 + cost_b b2
+  | And (b1,b2) -> 5 + cost_b b1 + cost_b b2
+  | BHole _ -> 90 
+
+let rec cost_c : cmd -> int
+= fun cmd ->
+  match cmd with
+  | Assign (lv,a) -> 10 + cost_a (Lv lv) + cost_a a
+  | Skip -> 35
+  | Seq (c1,c2) -> 5 + cost_c c1 + cost_c c2
+  | If (b,c1,c2) -> 25 + cost_b b + cost_c c1 + cost_c c2
+  | While (b,c) -> 20 + cost_b b + cost_c c 
+  | CHole _ -> 100 
+  
+let rec cost : prog -> int
+= fun (_,cmd,_) -> cost_c cmd 
 
 let rec eval_aexp : aexp -> Memory.t -> value
 = fun aexp mem ->

@@ -38,7 +38,7 @@ type labeled_value =
   | VInt of int
   | VArr of int list
 
-type labeled_prog = labeled_value list * labeled_cmd * labeled_value
+type labeled_prog = var_list * labeled_cmd * var
 
 
 let label_count = ref 0

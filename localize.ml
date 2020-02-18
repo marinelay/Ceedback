@@ -144,20 +144,30 @@ let weight : labeled_prog -> examples -> examples -> (int, float) BatMap.t
   weight_function
 
 let cost_avg : (int, float) BatMap.t -> labeled_prog -> float
-= fun w l_pgm->
-	let pgm_set = BatMap.foldi (fun l _ acc ->
-		let hole_pgm = gen_hole_cmd l l_pgm in
-		BatSet.add (unlabeling_prog hole_pgm) acc
-	) w BatSet.empty in
-	let sum = BatSet.fold (fun pgm acc->
-		let rank = (cost (unlabeling_prog l_pgm)) - (cost pgm) in
-		acc +. (float_of_int rank)
-	) pgm_set 0.0 in
-	sum /. (float_of_int (BatSet.cardinal pgm_set))
+= fun w l_pgm ->
+  let pgm_set = BatMap.foldi (fun l _ acc ->
+    let hole_pgm = gen_hole_prog l l_pgm in
+    BatSet.add (unlabeling_prog hole_pgm) acc
+  ) w BatSet.empty in
+  let sum = BatSet.fold (fun pgm acc->
+    let rank = (cost (unlabeling_prog l_pgm)) - (cost pgm) in
+    acc +. (float_of_int rank)
+  ) pgm_set 0.0 in
+  sum /. (float_of_int (BatSet.cardinal pgm_set))
+
 
 let localization : prog -> examples -> unit
 = fun pgm examples ->
   let (counter_examples,pass_examples) = find_counter_examples pgm examples in
   let l_pgm = Labeling.labeling_prog pgm in 
   let weight_function = weight l_pgm pass_examples counter_examples in
-  
+  let avg = cost_avg weight_function l_pgm in
+  let candidate_set = BatMap.foldi (fun label weight set ->
+    let hole_pgm = gen_hole_pgm label l_pgm in
+    let candidate_pgm = unlabeling_prog hole_pgm in
+    let rank = ((cost pgm) - (cost candidate_pgm)) in
+    let rank = int_of_float ((float_of_int rank) +. (weight *. avg)) in
+    extend_set (rank, candidate_pgm) set
+    (*if (Synthesize.is_closed candidate_pgm) then  set else extend_set (rank, candidate_pgm) set*)
+  ) weight_function empty_set in
+  candidate_set  

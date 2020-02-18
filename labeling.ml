@@ -39,8 +39,50 @@ and labeling_cmd : cmd -> labeled_cmd
   | CHole n -> (new_label (), CHole n)
 
 let labeling_prog : prog -> labeled_prog
-= fun pgm -> List.fold_left (fun acc x -> acc@[labeling_cmd x]) [] pgm
+= fun (args, cmd, res) -> (args, labeling_cmd cmd, res)(*List.fold_left (fun acc x -> acc@[labeling_cmd x]) [] pgm*)
 
+(* labeled AST -> AST *)
+let rec unlabeling_aexp : labeled_aexp -> aexp
+= fun (l, exp) ->
+  match exp with
+  | Int n -> Itn n
+  | Lv lv -> Lv (unlabeling_lv lv)
+  | BinOpLv (bop, e1, e2) -> BinOpLv (bop, unlabeling_aexp e1, unlabeling_aexp e2)
+  | AHole n -> AHole n
+
+and unlabeling_lv : labeled_lv -> lv
+= fun (l, exp) ->
+  match exp with
+  | Var x -> Var x
+  | Arr (x, e) -> Arr (x, unlabeling_aexp e)
+
+and unlabeling_bexp : labeled_bexp -> bexp
+= fun (l, exp) ->
+  match exp with
+  | True -> True
+  | False -> False
+  | Gt (e1, e2) -> Gt (unlabeling_aexp e1, unlabeling_aexp e2)
+  | Lt (e1, e2) -> Lt (unlabeling_aexp e1, unlabeling_aexp e2)
+  | Eq (e1, e2) -> Eq (unlabeling_aexp e1, unlabeling_aexp e2)
+  | Not e -> Not (unlabeling_bexp e)
+  | Or (e1, e2) -> Or (unlabeling_bexp e1, unlabeling_bexp e2)
+  | And (e1, e2) -> Or (unlabeling_bexp e1, unlabeling_bexp e2)
+  | BHole n -> BHole n
+
+and unlabeling_cmd : labeled_cmd -> cmd
+= fun (l, exp) ->
+  match exp with
+  | Assign (x, e) -> Assign (unlabeling_lv x, unlabeling_aexp e)
+  | Skip -> Skip
+  | Seq (c1, c2) -> Seq (unlabeling_cmd c1, unlabeling_cmd c2)
+  | If (b, c1, c2) -> If (unlabeling_bexp b, unlabeling_cmd c1, unlabeling_cmd c2)
+  | While (b, c) -> While (unlabeling_bexp b, unlabeling_cmd c)
+  | CHole n -> CHole n
+
+let unlabeling_prog : labeled_prog -> prog
+= fun (args, l_cmd, res) -> (args, unlabeling_cmd l_cmd, res)
+
+(* Generating Hole *)
 let rec gen_hole_aexp : int -> labeled_aexp -> labeled_aexp
 = fun n (label, aexp) ->
   if label = n then labeling_aexp (gen_hole_aexp ()) else
@@ -69,4 +111,7 @@ and gen_hole_cmd : int -> labeled_cmd -> labeled_cmd
   | If (b, c1, c2) -> (label, If (gen_hole_bexp n b , gen_hole_cmd n c1, gen_hole_cmd n c2))
   | While (b, c) -> (label, While (gen_hole_bexp n b, gen_hole_cmd n c))
   | _ -> (label, cmd)
+
+let rec gen_hole_pgm : int -> labeled_prog -> labeled_prog
+= fun n (args, l_cmd, res) -> (args, gen_hole_cmd n l_cmd, res) 
   
