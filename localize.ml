@@ -11,7 +11,7 @@ let trace_set = ref empty_set
 let init_set () = (trace_set := empty_set)
 
 module labeled_Memory = struct
-  type t = (var,value) BatMap.t
+  type t = (var,labeled_value) BatMap.t
   let add = BatMap.add
   let mem = BatMap.mem
   let find x m = BatMap.find x m 
@@ -88,14 +88,14 @@ and eval_cmd : labeled_cmd -> labeled_Memory.t -> labeled_Memory.t
 = fun cmd mem ->
   (trace_set := extend_set label !trace_set);
   match cmd with
-  | Assign (Var x, aexp) -> Memory.add x (eval_aexp aexp mem) mem
+  | Assign (Var x, aexp) -> labeled_Memory.add x (eval_aexp aexp mem) mem
   | Assign (Arr (x, e), aexp) ->
-    (match Memory.find x mem, (eval_aexp e mem) with
+    (match labeled_Memory.find x mem, (eval_aexp e mem) with
     | VArr lst, VInt idx ->
       let size = List.length lst ->
         if (idx < 0) || (idx >= size) then raise BufferOverFlow
         else
-          Memory.add x (VArr (BatList.modify_at idx (fun v -> value2int (eval_aexp aexp mem)) lst)) mem
+          labeled_Memory.add x (VArr (BatList.modify_at idx (fun v -> value2int (eval_aexp aexp mem)) lst)) mem
     | _ -> raise (Failure "imp.ml - eval_cmd : variable type error"))
     )
   | Seq (c1, c2) -> eval_cmd c2 (eval_cmd c1 mem)
@@ -109,8 +109,8 @@ and eval_cmd : labeled_cmd -> labeled_Memory.t -> labeled_Memory.t
 let run : labeled_prog -> labeled_value list -> labeled_value (* input = value list *)
 = fun (args,cmd,res) input_params ->
   let init_mem = 
-  List.fold_left2 (fun mem x v -> Memory.add x v mem) Memory.empty args input_params in
-    let r = Memory.find res (eval_cmd cmd init_mem) in
+  List.fold_left2 (fun mem x v -> labeled_Memory.add x v mem) labeled_Memory.empty args input_params in
+    let r = labeled_Memory.find res (eval_cmd cmd init_mem) in
       r
 
 let rec collect_execution_trace : labeled_prog -> example -> trace_set
@@ -141,10 +141,23 @@ let weight : labeled_prog -> examples -> examples -> (int, float) BatMap.t
 			BatMap.add label w result
 		else BatMap.add label 0.0 result
 	) counter_map BatMap.empty in
-	weight_function
+  weight_function
+
+let cost_avg : (int, float) BatMap.t -> labeled_prog -> float
+= fun w l_pgm->
+	let pgm_set = BatMap.foldi (fun l _ acc ->
+		let hole_pgm = gen_hole_cmd l l_pgm in
+		BatSet.add (unlabeling_prog hole_pgm) acc
+	) w BatSet.empty in
+	let sum = BatSet.fold (fun pgm acc->
+		let rank = (cost (unlabeling_prog l_pgm)) - (cost pgm) in
+		acc +. (float_of_int rank)
+	) pgm_set 0.0 in
+	sum /. (float_of_int (BatSet.cardinal pgm_set))
 
 let localization : prog -> examples -> unit
 = fun pgm examples ->
-  (*let (counter_examples,pass_examples) = find_counter_examples pgm examples in*)
-  let l_pgm = Labeling.labeling_prog pgm in ()
+  let (counter_examples,pass_examples) = find_counter_examples pgm examples in
+  let l_pgm = Labeling.labeling_prog pgm in 
+  let weight_function = weight l_pgm pass_examples counter_examples in
   
