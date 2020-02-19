@@ -4,11 +4,12 @@ TARGET = run
 
 all: $(TARGET)
 
-$(TARGET):  imp.cmo  label_lang.cmo  labeling.cmo localize.cmo
+$(TARGET):  vocab.cmo imp.cmo  label_lang.cmo  labeling.cmo localize.cmo
 	ocamlc -o $@ $^
 
 
-
+vocab.cmo : vocab.ml
+	ocamlc -c vocab.ml
 
 imp.cmo : imp.ml
 	ocamlc -c imp.ml
