@@ -22,6 +22,7 @@ let main () =
     | None -> print_endline "Fail to Synthesize"
     | Some cmd ->*)
       let ranked_prog_set = Localize.localization pgm examples in
-      let _ = BatSet.map (fun (_, pgm) -> let _ = print_endline (Imp.ts_pgm_rows pgm);in ()) ranked_prog_set in ()
+      let _ = BatSet.map (fun (_, pgm) -> let _ = print_endline (Imp.ts_pgm_rows pgm);in ()) ranked_prog_set in
+      let components = Comp.extract_component solution in
       
 let _ = main ()
