@@ -36,6 +36,151 @@ type value =
   | VInt of int 
   | VArr of int list
 
+<<<<<<< Updated upstream
+=======
+type prog = var list * cmd * var
+type exp = Aexp of aexp | Lv of lv | Bexp of bexp | Cmd of cmd
+and components = exp BatSet.t
+
+type example = value list * value
+type examples = example list
+
+let exp_hole_count = ref 0
+let ahole : unit -> aexp
+= fun () -> exp_hole_count:=!exp_hole_count+1; AHole (!exp_hole_count)
+let bhole : unit -> bexp
+= fun () -> exp_hole_count:=!exp_hole_count+1; BHole (!exp_hole_count)
+let chole : unit -> cmd
+= fun () -> exp_hole_count:=!exp_hole_count+1; CHole (!exp_hole_count)
+
+module Memory = struct
+  type t = (var,value) BatMap.t
+  let add = BatMap.add
+  let mem = BatMap.mem
+  let find x m = BatMap.find x m 
+  let empty = BatMap.empty
+end
+
+exception BufferOverFlow
+
+let rec cost_a : aexp -> int
+= fun aexp ->
+  match aexp with
+  | Int _ -> 10
+  | Lv _ -> 10
+  | BinOpLv (Mod,_,_) -> 10 
+  | BinOpLv (Div,_,_) -> 10 
+  | BinOpLv (_,_,_) -> 10
+  | AHole _ -> 80 
+
+let rec cost_b : bexp -> int
+= fun bexp ->
+  match bexp with
+  | True -> 25
+  | False -> 25
+  | Gt (_,_) -> 10
+  | Lt (_,_) -> 10
+  | Eq (_,_) -> 10
+  | Not b -> 5 + cost_b b
+  | Or (b1,b2) -> 5 + cost_b b1 + cost_b b2
+  | And (b1,b2) -> 5 + cost_b b1 + cost_b b2
+  | BHole _ -> 90 
+
+let rec cost_c : cmd -> int
+= fun cmd ->
+  match cmd with
+  | Assign (lv,a) -> 10 + cost_a (Lv lv) + cost_a a
+  | Skip -> 35
+  | Seq (c1,c2) -> 5 + cost_c c1 + cost_c c2
+  | If (b,c1,c2) -> 25 + cost_b b + cost_c c1 + cost_c c2
+  | While (b,c) -> 20 + cost_b b + cost_c c 
+  | CHole _ -> 100 
+  
+let rec cost : prog -> int
+= fun (_,cmd,_) -> cost_c cmd 
+
+let rec eval_aexp : aexp -> Memory.t -> value
+= fun aexp mem ->
+  match aexp with
+  | Int n -> VInt n
+  | Lv lv -> eval_lv lv mem
+  | BinOpLv (bop, e1, e2) -> eval_bop bop (eval_aexp e1 mem) (eval_aexp e2 mem)
+  | AHole _ -> raise (Failure "eval_aexp : hole encountered")
+
+and eval_lv : lv -> Memory.t -> value
+= fun lv mem ->
+  match lv with
+  | Var x -> Memory.find x mem
+  | Arr (x,e) ->
+    (match Memory.find x mem, (eval_aexp e mem) with
+    | VArr lst, VInt idx ->
+      let size = List.length lst in
+        if idx < 0 || idx >= size then raise BufferOverFlow
+        else VInt (List.nth lst idx)
+    | _ -> raise (Failure "imp.ml : eval_lv - variable type error")) 
+
+and value2int : value -> int
+= fun value -> 
+  match value with 
+  | VInt n -> n 
+  | _ -> raise (Failure "array value is not integer type")
+
+and eval_bop : bop -> value -> value -> value
+= fun bop v1 v2 ->
+  match bop with
+  | Plus  -> VInt ((value2int v1) + (value2int v2))
+  | Minus -> VInt ((value2int v1) - (value2int v2))
+  | Mult  -> VInt ((value2int v1) * (value2int v2))
+  | Div   -> VInt ((value2int v1) / (value2int v2))
+  | Mod   -> VInt ((value2int v1) mod (value2int v2))
+
+and eval_bexp : bexp -> Memory.t -> bool
+= fun bexp mem ->
+  match bexp with
+  | True -> true 
+  | False -> false
+  | Gt (e1,e2) -> (value2int (eval_aexp e1 mem)) > (value2int (eval_aexp e2 mem))
+  | Lt (e1,e2) -> (value2int (eval_aexp e1 mem)) < (value2int (eval_aexp e2 mem))
+  | Eq (e1,e2) -> (value2int (eval_aexp e1 mem)) = (value2int (eval_aexp e2 mem)) 
+  | Not b -> not (eval_bexp b mem) 
+  | Or (b1,b2) -> (eval_bexp b1 mem) || (eval_bexp b2 mem)
+  | And (b1,b2) -> (eval_bexp b1 mem) && (eval_bexp b2 mem)
+  | BHole _ -> raise (Failure "eval_bexp: hole encountered")
+
+and eval_cmd : cmd -> Memory.t -> Memory.t
+= fun cmd mem ->
+  match cmd with
+  | Assign (Var x, aexp) -> Memory.add x (eval_aexp aexp mem) mem
+  | Assign (Arr (x, e), aexp) ->
+    (match Memory.find x mem, (eval_aexp e mem) with
+    | VArr lst, VInt idx ->
+      let size = List.length lst in
+        if (idx < 0) || (idx >= size) then raise BufferOverFlow
+        else
+          Memory.add x (VArr (BatList.modify_at idx (fun v -> value2int (eval_aexp aexp mem)) lst)) mem
+    | _ -> raise (Failure "imp.ml - eval_cmd : variable type error"))
+    
+  | Seq (c1, c2) -> eval_cmd c2 (eval_cmd c1 mem)
+  | If (b, c1, c2) ->
+    if eval_bexp b mem then eval_cmd c1 mem else eval_cmd c2 mem
+  | While (b,c) ->
+    if eval_bexp b mem then eval_cmd cmd (eval_cmd c mem) else mem
+  | Skip -> mem
+  | CHole _ -> raise (Failure "eval_cmd: hole encountered")
+
+let rec value_equality : value -> value -> bool
+= fun v1 v2 ->
+  match v1, v2 with
+  | VInt n1, VInt n2 -> n1=n2
+
+let run : prog -> value list -> value (* input = value list *)
+= fun (args,cmd,res) input_params ->
+  let init_mem = 
+  List.fold_left2 (fun mem x v -> Memory.add x v mem) Memory.empty args input_params in
+    let r = Memory.find res (eval_cmd cmd init_mem) in
+      r
+
+>>>>>>> Stashed changes
 let rec ts_aexp : aexp -> string
 = fun aexp -> 
   match aexp with
