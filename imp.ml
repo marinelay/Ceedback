@@ -38,7 +38,7 @@ type value =
 
 type prog = var list * cmd * var
 type exp = Aexp aexp | Lv lv | Bexp bexp | Cmd cmd
-and components = exp BatSet.t
+and components = aexp BatSet.t * bexp BatSet.t * cmd BatSet.t
 
 type example = value list * value
 type examples = example list

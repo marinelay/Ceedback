@@ -24,16 +24,25 @@ let extract_variables : prog -> var list -> var list -> (var BatSet.t * var BatS
   let arr = List.fold_left (fun lst x -> BatSet.add x lst) sub_arr arr in
   (var, arr)
 
+let add_component_aexp : aexp -> components -> components
+= fun aexp (a_comps, b_comps, c_comps) -> (BatSet.add aexp a_comps, b_comps, c_comps)
+
+and add_component_bexp : aexp -> components -> components
+= fun bexp (a_comps, b_comps, c_comps) -> (a_comps, BatSet.add bexp b_comps, c_comps)
+
+and add_component_cmd : aexp -> components -> components
+= fun cmd (a_comps, b_comps, c_comps) -> (a_comps, b_comps, BatSet.add cmd c_comps)
+
 
 let rec find_component_aexp : aexp -> components -> components
 = fun aexp comps ->
   match aexp with ->
-  | Int n -> BatSet.add (Aexp aexp) comps
+  | Int n -> add_component_aexp aexp comps
   | Lv lv -> find_component_lv lv
   | BinOpLv (bop, e1, e2) ->
     let comps = find_component_aexp e1 comps in
     let comps = find_component_aexp e2 comps in
-    BatSet.add (Aexp (BinOpLv (bop, AHole(0), AHole(0)))) comps
+    add_component_aexp (BinOpLv (bop, AHole(0), AHole(0))) comps
   | _ -> comps
 
 and find_component_lv : lv -> components -> components
@@ -45,32 +54,32 @@ and find_component_lv : lv -> components -> components
     BatSet.add (Lv (Arr (x, AHole(0)))) comps*)
   
 and find_component_bexp : bexp -> components -> components
-= fun bexp comps -> 
+= fun bexp comps ->
   match bexp with
-  | True | False -> BatSet.Add (Bexp bexp) comps
+  | True | False -> add_component_bexp bexp comps
   | Gt (e1, e2) ->
     let comps = find_component_aexp e1 comps in
     let comps = find_component_aexp e2 comps in
-    BatSet.add (Bexp (Gt (AHole (0), AHole(0)))) comps
+    add_component_bexp (Gt (AHole (0), AHole(0))) comps
   | Lt (e1, e2) ->
     let comps = find_component_aexp e1 comps in
     let comps = find_component_aexp e2 comps in
-    BatSet.add (Bexp (Lt (AHole (0), AHole(0)))) comps
+    add_component_bexp (Lt (AHole (0), AHole(0))) comp
   | Eq (e1, e2) ->
     let comps = find_component_aexp e1 comps in
     let comps = find_component_aexp e2 comps in
-    BatSet.add (Bexp (Eq (AHole (0), AHole(0)))) comps
+    add_component_bexp (Eq (AHole (0), AHole(0))) comp
   | Not b ->
     let comps = find_component_bexp b comps in
-    BatSet.add (Bexp (Not BHole(0))) comps
+    add_component_bexp (Not BHole(0)) comps
   | Or (e1, e2) ->
     let comps = find_component_bexp e1 comps in
     let comps = find_component_bexp e2 comps in
-    BatSet.add (Bexp (Or (BHole (0), BHole(0)))) comps
+    add_component_bexp (Or (AHole (0), AHole(0))) comp
   | And (e1, e2) ->
     let comps = find_component_bexp e1 comps in
     let comps = find_component_bexp e2 comps in
-    BatSet.add (Bexp (And (BHole (0), BHole(0)))) comps
+    add_component_bexp (And (AHole (0), AHole(0))) comp
   | _ -> comps
 
 and find_component_cmd : cmd -> components -> components
@@ -78,20 +87,20 @@ and find_component_cmd : cmd -> components -> components
   match cmd with
   | Assign (x, e) ->
     let comps = find_component_lv x comps in 
-    BatSet.add (Cmd (Assign (x, AHole(0)))) comps 
+    add_component_cmd (Assign (x, AHole(0))) comps 
   | Seq (c1, c2) ->
     let comps = find_component_cmd c1 comps in
     let comps = find_component_cmd c2 comps in
-    BatSet.add (Cmd (Seq (CHole (0), CHole(0)))) comps
+    add_component_cmd (Seq (CHole (0), CHole(0))) comps
   | If (b, c1, c2) ->
     let comps = find_component_bexp b comps in
     let comps = find_component_cmd c1 comps in
     let comps = find_component_cmd c2 comps in
-    BatSet.add (Cmd (If (BHole (0), CHole(0), CHole(0)))) comps
+    add_component_cmd (If (BHole (0), CHole(0), CHole(0))) comps
   | While (b, c) ->
     let comps = find_component_bexp b comps in
     let comps = find_component_cmd c comps in
-    BatSet. add (Cmd (While (BHole(0), CHole(0)))) comps
+    add_component_cmd (While (BHole(0), CHole(0))) comps
   | _ -> comps
 
 let extract_component : prog -> components
