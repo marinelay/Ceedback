@@ -1,3 +1,5 @@
+open Imp
+
 type hole = A of aexp | B of bexp | C of cmd
 
 module Workset = struct
@@ -111,6 +113,16 @@ let gen_nextstates_a : aexp BatSet.t -> (prog * aexp) -> prog BatSet.t
   ) candidates BatSet.empty
 
 let gen_nextstates_b : bexp BatSet.t -> (prog * bexp) -> prog BatSet.t
+= fun candidates (p, bh) ->
+  BatSet.fold (fun bcandi acc ->
+    BatSet.add (replace_b p bh bcandi) acc
+  ) candidates BatSet.empty
+
+let gen_nextstates_b : cmd BatSet.t -> (prog * cmd) -> prog BatSet.t
+= fun candidates (p, ch) ->
+  BatSet.fold (fun bcandi acc ->
+    BatSet.add (replace_c p ch ccandi) acc
+  ) candidates BatSet.empty
 
 let nextof_a : lv list -> prog * aexp -> aexp BatSet.t -> prog BatSet.t
 = fun lv_comps (p, ah) a_comps ->
@@ -125,7 +137,29 @@ let nextof_b : lv list -> prog * cmd -> cmd BatSet.t -> prog BatSet.t
   = fun lv_comps (p, ch) c_comps ->
   gen_nextstates_c c_comps (p, cmd)
 
+  (* Pruning Infinite case *)
+let rec infinite_possible : pgm -> bool
+= fun (_,cmd,_) -> infinite cmd
 
+and infinite : cmd -> bool
+= fun cmd ->
+  match cmd with
+  | Seq (c1,c2) 
+  | If (_,c1,c2) -> infinite c1 || infinite c2
+  | While (b,c) ->
+    let cmd_list = list_of_cmd c in
+    let (remaining_cmd,last_cmd) = BatList.split_at (List.length cmd_list - 1) cmd_list in
+    let last_cmd = List.hd last_cmd in 
+      cntvar_redefined b remaining_cmd || not (permitted_last b last_cmd) || infinite c
+  | _ -> false 
+  
+and list_of_cmd : cmd -> cmd list 
+= fun cmd -> 
+  match cmd with
+  | Seq (c1,c2) -> (list_of_cmd c1)@(list_of_cmd c2)
+  | _ -> [cmd]
+
+    (* Update Components *)
 let rec update_components_aexp : aexp -> aexp
 = fun aexp ->
   match aexp with
@@ -270,7 +304,26 @@ let find_choles : prog -> cmd BatSet.t
 
 let next : components -> int list -> lv list -> prog -> prog BatSet.t
 = fun components int_comps lv_comps pgm ->
+  let (acomps, bcomps, ccomps) = components in
+  let aholes = find_aholes prog in
+  let bholes = find_bholes prog in
+  let choles = find_choles prog in
+  let next_a = BatSet.fold (fun ah acc -> BatSet.union acc (nextof_a lv_comps (pgm, ah) acomps)) aholes BatSet.empty in
+  let next_b = BatSet.fold (fun bh acc -> BatSet.union acc (nextof_b lv_comps (pgm, bh) bcomps)) bholes BatSet.empty in
+  let next_c = BatSet.fold (fun ch acc -> BatSet.union acc (nextof_c lv_comps (pgm, ch)ccomps)) choles BatSet.empty in
+  BatSet.union next_a (BatSet.union next_b next_c)   
 
+let is_solution : prog -> example list -> bool
+= fun pgm examples -> 
+  List.for_all (fun (i,o) ->
+    try
+      Imp.run pgm i = o
+    with
+      | _ -> false
+  ) examples
+
+let is_closed : prog -> bool
+= fun pgm -> BatSet.is_empty (aholes pgm) && BatSet.is_empty (bholes pgm) && BatSet.is_empty (choles pgm)
 
 let rec work : components -> example list -> int list -> lv list -> Workset.t -> pgm option
 = fun exp_set examples int_comps lv_comps workset ->
@@ -287,20 +340,17 @@ let rec work : components -> example list -> int list -> lv list -> Workset.t ->
   | None -> None
   | Some (pgm, remaining_workset) ->
     if is_closed pgm then
-      if is_solution pgm examples then Some (equivalence lv_comps pgm)
+      if is_solution pgm examples then Some pgm(*(equivalence lv_comps pgm)*)
       else work examples int_comps lv_comps remaining_workset
     else 
       if Abs.hopeless pgm examples lv_comps then work examples int_comps lv_comps remaining_workset
       else 
 
         let exp_set = update_components exp_set in
-        let aholes = find_aholes pgm in
-        let bholes = find_bholes pgm in
-        let choles = find_choles pgm in
 
-        let nextstates = next int_comps lv_comps pgm in
-        let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in
-        let nextstates = BatSet.map (fun ns -> equivalence lv_comps ns) nextstates in
+        let nextstates = next exp_set int_comps lv_comps pgm in
+        (*let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in
+        let nextstates = BatSet.map (fun ns -> equivalence lv_comps ns) nextstates in*)
         let new_workset = BatSet.fold Workset.add nextstates remaining_workset in 
           work examples int_comps lv_comps new_workset
    
