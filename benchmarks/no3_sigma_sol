@@ -8,8 +8,8 @@ Examples
 Partial Program
 fun n ->
 r=0;
-while (n > 1){
-    r = r - n;
+while (n > 0){
+    r = r + n;
     n = n - 1;
 }
 return r;

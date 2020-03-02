@@ -1,16 +1,15 @@
-(* accepts n, return 1+2+...+n *)
 Examples
-0 -> 0;
+0 -> 1;
 1 -> 1;
-2 -> 3;
+2 -> 2;
 3 -> 6;
 
 Partial Program
 fun n ->
-r=0;
-while (n > 1){
-    r = r - n;
-    n = n - 1;
+r = 1;
+while (n>1){
+    r = r*n;
+    n = n+1;
 }
 return r;
 
@@ -18,7 +17,7 @@ Int Comps
 0,1
 
 Int Var Comps
-r,n,t
+r,n
 
 Array Var Comps
 none

@@ -238,7 +238,7 @@ let rec add_lv_state : aexp -> absval -> State.t -> State.t -> State.t
 = fun aexp (itv, sym) state state' ->
   match aexp with
   | Lv lv -> State.add (absloc_of_lv lv state) (itv, sym) state'
-  | _ -> state
+  | _ -> state'
 
 let rec prune_by : bexp -> State.t -> State.t 
 = fun bexp state ->

@@ -43,6 +43,8 @@ and components = (aexp BatSet.t * bexp BatSet.t * cmd BatSet.t)
 type example = value list * value
 type examples = example list
 
+let start_time = ref 0.0
+
 let exp_hole_count = ref 0
 let ahole : unit -> aexp
 = fun () -> exp_hole_count:=!exp_hole_count+1; AHole (!exp_hole_count)
@@ -59,32 +61,37 @@ module Memory = struct
   let empty = BatMap.empty
 end
 
+exception TimeoutError
 exception BufferOverFlow
 
 let rec cost_a : aexp -> int
 = fun aexp ->
   match aexp with
   | Int _ -> 10
-  | Lv _ -> 10
-  | BinOpLv (Mod,_,_) -> 10 
-  | BinOpLv (Div,_,_) -> 10 
-  | BinOpLv (_,_,_) -> 10
-  | AHole _ -> 80 
+  | Lv lv -> cost_lv lv
+  | BinOpLv (_,e1,e2) -> 15 + cost_a e1 + cost_a e2
+  | AHole _ -> 80
 
-let rec cost_b : bexp -> int
+and cost_lv : lv -> int
+= fun lv ->
+  match lv with
+  | Var _ -> 10
+  | Arr (_, e) -> 10 + cost_a e
+
+and cost_b : bexp -> int
 = fun bexp ->
   match bexp with
   | True -> 25
   | False -> 25
-  | Gt (_,_) -> 10
-  | Lt (_,_) -> 10
-  | Eq (_,_) -> 10
-  | Not b -> 5 + cost_b b
-  | Or (b1,b2) -> 5 + cost_b b1 + cost_b b2
-  | And (b1,b2) -> 5 + cost_b b1 + cost_b b2
-  | BHole _ -> 90 
+  | Gt (e1,e2) -> 10 + cost_a e1 + cost_a e2
+  | Lt (e1,e2) -> 10 + cost_a e1 + cost_a e2
+  | Eq (e1,e2) -> 10 + cost_a e1 + cost_a e2
+  | Not b -> 10 + cost_b b
+  | Or (b1,b2) -> 10 + cost_b b1 + cost_b b2
+  | And (b1,b2) -> 10 + cost_b b1 + cost_b b2
+  | BHole _ -> 90
 
-let rec cost_c : cmd -> int
+and cost_c : cmd -> int
 = fun cmd ->
   match cmd with
   | Assign (lv,a) -> 10 + cost_a (Lv lv) + cost_a a
@@ -92,13 +99,16 @@ let rec cost_c : cmd -> int
   | Seq (c1,c2) -> 5 + cost_c c1 + cost_c c2
   | If (b,c1,c2) -> 25 + cost_b b + cost_c c1 + cost_c c2
   | While (b,c) -> 20 + cost_b b + cost_c c 
-  | CHole _ -> 100 
+  | CHole _ -> 100
   
 let rec cost : prog -> int
 = fun (_,cmd,_) -> cost_c cmd 
 
 let rec eval_aexp : aexp -> Memory.t -> value
 = fun aexp mem ->
+  if (Unix.gettimeofday() -. !start_time >0.2) 
+  then let _ = print_endline "TimeOut" in raise TimeoutError
+  else
   match aexp with
   | Int n -> VInt n
   | Lv lv -> eval_lv lv mem
@@ -107,6 +117,8 @@ let rec eval_aexp : aexp -> Memory.t -> value
 
 and eval_lv : lv -> Memory.t -> value
 = fun lv mem ->
+  if (Unix.gettimeofday() -. !start_time >0.2) then raise TimeoutError
+  else
   match lv with
   | Var x -> Memory.find x mem
   | Arr (x,e) ->
@@ -134,6 +146,8 @@ and eval_bop : bop -> value -> value -> value
 
 and eval_bexp : bexp -> Memory.t -> bool
 = fun bexp mem ->
+  if (Unix.gettimeofday() -. !start_time >0.2) then raise TimeoutError
+  else
   match bexp with
   | True -> true 
   | False -> false
@@ -147,6 +161,8 @@ and eval_bexp : bexp -> Memory.t -> bool
 
 and eval_cmd : cmd -> Memory.t -> Memory.t
 = fun cmd mem ->
+  if (Unix.gettimeofday() -. !start_time >0.2) then raise TimeoutError
+  else
   match cmd with
   | Assign (Var x, aexp) -> Memory.add x (eval_aexp aexp mem) mem
   | Assign (Arr (x, e), aexp) ->
@@ -173,6 +189,7 @@ let rec value_equality : value -> value -> bool
 
 let run : prog -> value list -> value (* input = value list *)
 = fun (args,cmd,res) input_params ->
+  start_time:=Unix.gettimeofday();
   let init_mem = 
   List.fold_left2 (fun mem x v -> Memory.add x v mem) Memory.empty args input_params in
     let r = Memory.find res (eval_cmd cmd init_mem) in

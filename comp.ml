@@ -86,7 +86,8 @@ and find_component_cmd : cmd -> components -> components
 = fun cmd comps ->
   match cmd with
   | Assign (x, e) ->
-    let comps = find_component_lv x comps in 
+    let comps = find_component_lv x comps in
+    let comps = find_component_aexp e comps in 
     add_component_cmd (Assign (x, AHole(0))) comps 
   | Seq (c1, c2) ->
     let comps = find_component_cmd c1 comps in
