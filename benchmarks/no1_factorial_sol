@@ -7,7 +7,7 @@ Examples
 Partial Program
 fun n ->
 r = 1;
-while (r>2){
+while (n>1){
     r = r*n;
     n = n-1;
 }
