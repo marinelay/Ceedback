@@ -173,6 +173,7 @@ let localization : prog -> examples -> (int * prog) BatSet.t
   let weight_function = weight l_pgm pass_examples counter_examples in
   let avg = cost_avg weight_function l_pgm in
   let candidate_set = BatMap.foldi (fun label weight set ->
+  
     let hole_pgm = gen_hole_prog label l_pgm in
     let candidate_pgm = unlabeling_prog hole_pgm in
     let rank = ((cost pgm) - (cost candidate_pgm)) in

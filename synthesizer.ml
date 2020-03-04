@@ -395,7 +395,7 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
         let exp_set = update_components exp_set in
 
         let nextstates = next exp_set lv_comps (rank,pgm) in
-        let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in
+        (*let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in*)
         let nextstates = BatSet.map (fun ns -> equivalence lv_comps ns) nextstates in
         let new_workset = BatSet.fold Workset.add nextstates remaining_workset in 
           work exp_set examples lv_comps new_workset

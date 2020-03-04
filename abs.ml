@@ -103,11 +103,14 @@ let reset_dump = Hashtbl.reset dump
 
  let rec itv_eval_aexp : aexp -> State.t -> Itv.t
  = fun aexp state ->
-   match aexp with
-   | Int n -> Itv.int2itv n 
-   | Lv lv -> State.fst_of_val (State.find (absloc_of_lv lv state) state)
-   | BinOpLv (bop, lv1, lv2) -> itv_eval_bop bop (itv_eval_aexp lv1 state) (itv_eval_aexp lv2 state)
-   | AHole _ -> Itv.top
+  try State.fst_of_val (State.find (absloc_of_aexp aexp state) state)
+  with
+  | Not_found ->
+    (match aexp with
+    | Int n -> Itv.int2itv n 
+    | Lv lv -> State.fst_of_val (State.find (absloc_of_lv lv state) state)
+    | BinOpLv (bop, lv1, lv2) -> itv_eval_bop bop (itv_eval_aexp lv1 state) (itv_eval_aexp lv2 state)
+    | AHole _ -> Itv.top)
  
  and itv_eval_bop : bop -> Itv.t -> Itv.t -> Itv.t
  = fun bop v1 v2 ->
@@ -170,17 +173,17 @@ and absloc_of_aexp : aexp -> State.t -> absloc
   match aexp with
   | Int n -> string_of_int n
   | Lv lv -> absloc_of_lv lv state
-  | BinOpLv (bop, e1, e2) -> absloc_of_bop bop e1 e2
+  | BinOpLv (bop, e1, e2) -> absloc_of_bop bop e1 e2 state 
   | AHole _ -> "AHole"
 
-and absloc_of_bop : bop -> aexp -> aexp -> absloc
-= fun bop e1 e2 ->
+and absloc_of_bop : bop -> aexp -> aexp -> State.t -> absloc
+= fun bop e1 e2 state ->
   match bop with
-  | Plus -> absloc_of_aexp e1 ^ " + " ^ absloc_of_aexp e2
-  | Minus -> absloc_of_aexp e1 ^ " - " ^ absloc_of_aexp e2
-  | Mult -> absloc_of_aexp e1 ^ " * " ^ absloc_of_aexp e2
-  | Div -> absloc_of_aexp e1 ^ " / " ^ absloc_of_aexp e2
-  | Mod -> absloc_of_aexp e1 ^ " % " ^ absloc_of_aexp e2
+  | Plus -> absloc_of_aexp e1 state  ^ " + " ^ absloc_of_aexp e2 state
+  | Minus -> absloc_of_aexp e1 state ^ " - " ^ absloc_of_aexp e2 state 
+  | Mult -> absloc_of_aexp e1 state ^ " * " ^ absloc_of_aexp e2 state 
+  | Div -> absloc_of_aexp e1 state ^ " / " ^ absloc_of_aexp e2 state 
+  | Mod -> absloc_of_aexp e1 state ^ " % " ^ absloc_of_aexp e2 state 
 
 and abs_eval_aexp : aexp -> State.t -> absval
 = fun aexp state -> (itv_eval_aexp aexp state, sym_eval_aexp aexp state) 
@@ -273,7 +276,7 @@ let rec prune_by : bexp -> State.t -> State.t
        let meet_e1 = Itv.meet e1_itv (Itv.lower_to_pinf (Itv.itv_inc_one e2_itv)) in
        let meet_e2 = Itv.meet e2_itv (Itv.ninf_to_upper (Itv.itv_dec_one e1_itv)) in
        let state' = State.add (absloc_of_aexp e1 state) (meet_e1, e1_sym) state in
-       let state'' = State.add (absloc_of_aexp e1 state) (meet_e1, e1_sym) in
+       let state'' = State.add (absloc_of_aexp e1 state) (meet_e2, e2_sym) state' in
        (*let state' = State.add (absloc_of_lv lv1 state) (meet_lv1, lv1_sym) state in
        let state'' = State.add (absloc_of_lv lv2 state) (meet_lv2, lv2_sym) state' in*)
          state''
@@ -282,8 +285,8 @@ let rec prune_by : bexp -> State.t -> State.t
        let (e2_itv, e2_sym) = abs_eval_aexp e2 state in
        let meet_e1 = Itv.meet e1_itv (Itv.ninf_to_upper (Itv.itv_dec_one e2_itv)) in
        let meet_e2 = Itv.meet e2_itv (Itv.lower_to_pinf (Itv.itv_inc_one e1_itv)) in
-       let state' = State.add (absloc_of_aexp e1 state) (meet_e1, e1_sym) in
-       let state'' = State.add (absloc_of_aexp e2 state) (meet_e2, e2_sym) in
+       let state' = State.add (absloc_of_aexp e1 state) (meet_e1, e1_sym) state in
+       let state'' = State.add (absloc_of_aexp e2 state) (meet_e2, e2_sym) state' in
        (*let state' = State.add (absloc_of_lv lv1 state) (meet_lv1, lv1_sym) state in
        let state'' = State.add (absloc_of_lv lv2 state) (meet_lv2, lv2_sym) state' in*)
          state''
@@ -291,8 +294,8 @@ let rec prune_by : bexp -> State.t -> State.t
        let (e1_itv, e1_sym) = abs_eval_aexp e1 state in
        let (e2_itv, e2_sym) = abs_eval_aexp e2 state in
        let meet = Itv.meet e1_itv e2_itv in
-       let state' = State.add (absloc_of_aexp e1 state) (meet, e1_sym) in
-       let state'' = State.add (absloc_of_aexp e2 state) (meet, e2_sym) in
+       let state' = State.add (absloc_of_aexp e1 state) (meet, e1_sym) state in
+       let state'' = State.add (absloc_of_aexp e2 state) (meet, e2_sym) state' in
        (*let state' = State.add (absloc_of_lv lv1 state) (meet, lv1_sym) state in
        let state'' = State.add (absloc_of_lv lv2 state) (meet, lv2_sym) state' in*)
          state''

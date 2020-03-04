@@ -36,9 +36,12 @@ let main () =
     | None -> print_endline "Fail to Synthesize"
     | Some cmd ->*)
       let ranked_prog_set = Localize.localization pgm examples in
+
+      let _ = print_endline "After Ranking" in
+
       let components = Comp.extract_component solution in
       
-      (*let _ = print_component components in ()*)
+      let _ = print_component components in 
 
     
       let lv_comps = make_lv_list int_var_comps arr_var_comps in

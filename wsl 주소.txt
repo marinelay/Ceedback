@@ -1,1 +1,3 @@
 cd Users/user/Desktop/myStudy/Ceedback/
+
+./main.native -input benchmarks/no1_factorial2 -solution benchmarks/no1_factorial_sol
