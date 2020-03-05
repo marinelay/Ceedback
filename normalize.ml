@@ -9,27 +9,63 @@ open Abs
  **********************
  **********************)
 
+let rec simple_bop : bop -> aexp -> aexp -> aexp
+= fun bop e1 e2 ->
+  match bop with
+  | Plus ->
+    (match (e1, e2) with
+    | Int n1, Int n2 -> Int (n1 + n2)
+    | Int 0, e | e, Int 0 -> e
+    | _ -> BinOpLv (bop, e1, e2)
+    )
+  | Minus ->
+    (match (e1, e2) with
+    | Int n1, Int n2 -> Int (n1 - n2)
+    | e, Int 0 -> e
+    | _ -> if e1 = e2 then Int 0 else BinOpLv (bop, e1, e2)
+    )
+  | Mult ->
+    (match (e1, e2) with
+    | Int n1, Int n2 -> Int (n1*n2)
+    | Int 0, _ | _, Int 0 -> Int 0
+    | Int 1, e | e, Int 1 -> e
+    | _ -> BinOpLv (bop, e1, e2)
+    )
+  | Div ->
+    (match (e1, e2) with
+    | Int n1, Int n2 -> Int (n1 / n2)
+    | Int 0, _ -> Int 0
+    | _, Int 0 -> raise (Failure "Division_by_zero : simple_bop_div")
+    | e, Int 1 -> e
+    | _ -> BinOpLv (bop, e1, e2)
+    )
+  | Mod ->
+    (match (e1, e2) with
+    | Int n1, Int n2 -> Int (n1 mod n2)
+    | _, Int 0 -> raise (Failure "Division_by_zero : simple_bop_mod")
+    | _, Int 1 -> Int 0
+    | Int 0, _ -> Int 0
+    | _ -> BinOpLv (bop, e1, e2)
+    )
+
 let rec simple_aexp : aexp -> aexp
 = fun aexp ->
   match aexp with
-  | BinOpLv (Minus,lv1,lv2) when lv1 = lv2 -> Int 0
-  (* Note : Both 2 below does not impair completeness *)
-  | BinOpLv (Div,lv1,lv2) when lv1 = lv2 -> Int 1
-  | BinOpLv (Mod,lv1,lv2) when lv1 = lv2 -> Int 0
-  | BinOpLv (Plus,lv, Int 0) | BinOpLv (Plus, Int 0, lv) -> lv
-  | BinOpLv (Minus,lv, Int 0) | BinOpLv (Minus, Int 0, lv) -> lv
-  | BinOpLv (Mult,lv, Int 1) | BinOpLv (Mult, Int 1, lv) -> lv
-  | BinOpLv (Mult,lv, Int 0) | BinOpLv (Mult, Int 0, lv) -> Int 0
-  | BinOpLv (Div, lv, Int 1) | BinOpLv (Div, Int 1, lv) -> lv
-  | BinOpLv (Mod, lv, Int 1) | BinOpLv (Mod, Int 1, lv) -> Int 0
+  | BinOpLv (bop, e1, e2) -> simple_bop bop (simple_aexp e1) (simple_aexp e2)
   | _ -> aexp
 
 let rec simple_bexp : bexp -> bexp
 = fun bexp ->
   match bexp with
-  | Gt (lv1,lv2) when lv1=lv2 -> False
-  | Lt (lv1,lv2) when lv1=lv2 -> False
-  | Eq (lv1,lv2) when lv1=lv2 -> True
+  | Gt (e1,e2) ->
+    if e1 = e2 then False
+    else Gt (simple_aexp e1, simple_aexp e2)
+  | Lt (e1,e2) ->
+    if e1 = e2 then False
+    else Lt (simple_aexp e1, simple_aexp e2)
+  | Eq (e1,e2) ->
+    if e1 = e2 then False
+    else Eq (simple_aexp e1, simple_aexp e2)
   | Not True -> False
   | Not False -> True
   | Not (Not b) -> simple_bexp b

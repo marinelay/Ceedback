@@ -200,7 +200,7 @@ let rec ts_aexp : aexp -> string
   match aexp with
   | Int n -> string_of_int n
   | Lv lv -> ts_lv lv
-  | BinOpLv (bop,lv1,lv2) -> ts_aexp lv1 ^ ts_bop bop ^ ts_aexp lv2
+  | BinOpLv (bop,lv1,lv2) -> "(" ^ ts_aexp lv1 ^ ts_bop bop ^ ts_aexp lv2 ^ ")"
   | AHole _ -> "?" 
 
 and ts_lv : lv -> string
