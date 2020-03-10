@@ -39,6 +39,10 @@ let main () =
     (*match cmd with 
     | None -> print_endline "Fail to Synthesize"
     | Some cmd ->*)
+
+      (*let test = Normalize_trans.trans_aexp (BinOpLv (Plus, (Lv (Var "x")), BinOpLv (Plus, BinOpLv (Minus, (Lv (Var "x")), (Lv (Var "y"))), (Lv (Var"y"))))) in
+      let _ = print_endline (Normalize_trans.ts_taexp test); in ()*)
+
       let ranked_prog_set = Localize.localization pgm examples in
       let components = Comp.extract_component solution in
 
@@ -51,6 +55,5 @@ let main () =
         | None -> print_endline "Fail to Synthesize"
         | Some pgm -> print_endline (ts_pgm_rows pgm);
       end
-      
       
 let _ = main ()

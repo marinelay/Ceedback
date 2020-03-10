@@ -1,36 +1,34 @@
 open Imp
 
-type nbop = Plus | Minus | Mult | Div | Mod
-and var = string
+type var = string
 
-type naexp =
-  | NInt of int
-  | NLv of nlv
-  | NMinus of naexp
-  | NBinOp of nbop * naexp list
-  | NAHole of int
+type taexp =
+  | TInt of int
+  | TLv of tlv
+  | TBop of bop * translist
+  | TAHole of int
+and translist = (taexp, int) BatMap.t
 
-and nlv =
-  | NVar of var
-  | NArr of var * naexp
+and tlv =
+  | TVar of var
+  | TArr of var * taexp
 
-and nbexp =
-  | NTrue | NFalse
-  | NLt of naexp * naexp
-  | NGt of naexp * naexp
-  | NEq of naexp * naexp
-  | NNot of nbexp
-  | NAnd of nbexp * nbexp
-  | NOr of nbexp * nbexp
-  | NBHole of int
+and tbexp =
+  | TTrue | TFalse
+  | TLt of taexp * taexp
+  | TGt of taexp * taexp
+  | TEq of taexp * taexp
+  | TNot of tbexp
+  | TAnd of tbexp * tbexp
+  | TOr of tbexp * tbexp
+  | TBHole of int
 
-and ncmd =
-  | NAssign of nlv * naexp
-  | NSkip
-  | NSeq of ncmd * ncmd
-  | NIf of nbexp * ncmd * ncmd
-  | NWhile of nbexp * ncmd
-  | NCHole of int
+and tcmd =
+  | TAssign of tlv * taexp
+  | TSkip
+  | TSeq of tcmd * tcmd
+  | TIf of tbexp * tcmd * tcmd
+  | TWhile of tbexp * tcmd
+  | TCHole of int
 
-and normal = bool * nbop (* Is Not? / Nbop *)
-and nprog = var list * ncmd * var
+and tprog = var list * tcmd * var
