@@ -2,6 +2,8 @@ open Imp
 open Itv
 open Vocab
 open Abs
+open Normalize_lang
+open Normalize_trans
 
 (***********************
  ***********************

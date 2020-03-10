@@ -1,11 +1,35 @@
 open Imp
 open Normalize_lang
 
-let rec trans_bop_list : aexp -> bool -> bop -> naexp list
-= fun e is_minus pre_bop ->
+type trans =
+  | TInt of int
+  | TVar of var
+  | TBop of bop * translist
+and translist = (trans, int) BatMap.t
+
+let trans_add : bool -> trans -> translist -> translist
+= fun opposite t t_list ->
+  try
+    BatMap.modify t (fun n -> if opposite then n-1 else n+1) t_list
+  with Not_found -> BatMap.add t (if opposite then -1 else 1) t_list
+
+let trans_merge : translist -> translist -> translist
+= fun t1 t2 ->
+  BatMap.merge (fun x t1_val t2_val -> 
+    let n1 = (match t1_val with
+    | Some n1 -> n1
+    | None -> 0
+    ) in
+    let n2 = (match t2_val with
+    | Some n2 -> n2
+    | None -> 0
+    ) in Some (n1+n2)
+  ) t1 t2
+
+let rec trans_bop : aexp -> bool -> bop -> translist -> translist
+= fun e opposite pre_bop t_list ->
   match e with
-  | Int n -> 
-    if is_minus then [NMinus (NInt n)] else [NInt n]
+  | Int n -> trans_add opposite (TInt n) t_list
   | Lv lv ->
     if is_minus then [NMinus (NLv lv)] else [NLv lv]  
   | BinOp (bop, e1, e2) ->
@@ -33,8 +57,8 @@ let rec trans_bop_list : aexp -> bool -> bop -> naexp list
     )
   | AHole n -> [NAHole n]
 
-and trans_bop : bop -> aexp -> aexp -> naexp
-= fun bop e1 e2 -> NBinOp (bop, (trans_bop_list e1 false bop)@(trans_bop_list_e2 false bop))
+and trans_bop_list : bop -> aexp -> aexp -> naexp
+= fun bop e1 e2 -> TBop (bop, trans_merge (trans_bop e1 false bop BatMap.empty) (trans_bop e2 false bop BatMap.empty))
 
 let rec trans_aexp : aexp -> naexp
 = fun aexp ->
