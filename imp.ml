@@ -70,7 +70,7 @@ let rec cost_a : aexp -> int
   | Int _ -> 10
   | Lv lv -> cost_lv lv
   | BinOpLv (_,e1,e2) -> 20 + cost_a e1 + cost_a e2
-  | AHole _ -> 20
+  | AHole _ -> 23
 
 and cost_lv : lv -> int
 = fun lv ->
@@ -89,7 +89,7 @@ and cost_b : bexp -> int
   | Not b -> 10 + cost_b b
   | Or (b1,b2) -> 10 + cost_b b1 + cost_b b2
   | And (b1,b2) -> 10 + cost_b b1 + cost_b b2
-  | BHole _ -> 20
+  | BHole _ -> 23
 
 and cost_c : cmd -> int
 = fun cmd ->
@@ -99,7 +99,7 @@ and cost_c : cmd -> int
   | Seq (c1,c2) -> 5 + cost_c c1 + cost_c c2
   | If (b,c1,c2) -> 25 + cost_b b + cost_c c1 + cost_c c2
   | While (b,c) -> 20 + cost_b b + cost_c c 
-  | CHole _ -> 30
+  | CHole _ -> 23
   
 let rec cost : prog -> int
 = fun (_,cmd,_) -> cost_c cmd 

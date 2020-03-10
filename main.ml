@@ -16,6 +16,10 @@ let rec print_component : components -> unit
   let _ = BatSet.map (fun x -> let _ = print_endline (ts_bexp x); in ()) bexp in
   let _ = BatSet.map (fun x -> let _ = print_endline (ts_cmd_onerow x); in ()) cmd in ()
 
+let rec print_ranked_prog : (int * prog) BatSet.t -> unit
+= fun set ->
+  let _ = BatSet.map (fun p -> let (rank, pgm) = p in let _ = print_endline ((string_of_int rank) ^ (ts_pgm_onerow pgm)) in ()) set in ()
+
 let make_lv_list : var list -> var list -> lv list
 = fun int_var_comps arr_var_comps ->
   List.fold_left (fun acc x -> (Var x)::acc) [] int_var_comps @
@@ -36,13 +40,9 @@ let main () =
     | None -> print_endline "Fail to Synthesize"
     | Some cmd ->*)
       let ranked_prog_set = Localize.localization pgm examples in
-
-      let _ = print_endline "After Ranking" in
-
       let components = Comp.extract_component solution in
-      
-      let _ = print_component components in 
 
+      let _ = print_ranked_prog ranked_prog_set in
     
       let lv_comps = make_lv_list int_var_comps arr_var_comps in
       let pgm = Synthesizer.synthesize components examples ranked_prog_set lv_comps in

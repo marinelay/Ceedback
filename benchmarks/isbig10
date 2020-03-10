@@ -1,0 +1,26 @@
+(* accepts n, returns n * (n-2) * (n-4) * ... *)
+Examples
+1,2 -> 4;
+5,6 -> 0;
+7,8 -> 0;
+2,7 -> 10;
+4,5 -> 10;
+6,2 -> 9;
+10, 1 -> 0;
+
+Partial Program
+fun x, y ->
+r = 0;
+if (x+y<10){
+    r = x-y;
+}
+return r;
+
+Int Comps
+0,1,2
+
+Int Var Comps
+r,x,y
+
+Array Var Comps
+none
