@@ -2,6 +2,8 @@ open Imp
 open Normalize_lang
 
 
+
+
 (* Translation aexp to taexp *)
 
 let trans_add : bool -> taexp -> translist -> translist
@@ -67,6 +69,7 @@ and trans_aexp : aexp -> taexp
 = fun aexp ->
   match aexp with
   | Int n -> TInt n
+  | Lv lv -> TLv (trans_lv lv)
   | BinOpLv (bop, e1, e2) -> trans_bop_list bop e1 e2
   | AHole n -> TAHole n
 
@@ -129,15 +132,20 @@ let rec restore_bop : bop -> translist -> aexp
   then
     if bop = Plus || bop = Minus then Int 0 else Int 1
   else 
-    let (taexp, n) = BatMap.pop t_list in
-    BinOpLv (bop, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
+    let ((taexp, n), t_list) = BatMap.pop t_list in
+    (match bop with
+    | Plus | Minus -> BinOpLv (Plus, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
+    | Mult | Div -> BinOpLv (Mult, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
+    | _ -> BinOpLv (bop, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
+    )
+    
 
 and restore_aexp : taexp -> aexp
 = fun taexp ->
   match taexp with
   | TInt n -> Int n
   | TLv lv -> Lv (restore_lv lv)
-  | TBop (bop, t_list)
+  | TBop (bop, t_list) -> restore_bop bop t_list
   | TAHole n -> AHole n
 
 and restore_lv : tlv -> lv
@@ -154,7 +162,7 @@ let rec restore_bexp : tbexp -> bexp
   | TLt (e1, e2) -> Lt (restore_aexp e1, restore_aexp e2)
   | TGt (e1, e2) -> Gt (restore_aexp e1, restore_aexp e2)
   | TEq (e1, e2) -> Eq (restore_aexp e1, restore_aexp e2)
-  | TNot e -> Not (restore_aexp e)
+  | TNot e -> Not (restore_bexp e)
   | TAnd (e1, e2) -> And (restore_bexp e1, restore_bexp e2)
   | TOr (e1, e2) -> Or (restore_bexp e1, restore_bexp e2)
   | TBHole n -> BHole n
@@ -171,3 +179,9 @@ let rec restore_cmd : tcmd -> cmd
 
 let restore_pgm : tprog -> prog
 = fun (init, tcmd, res) -> (init, restore_cmd tcmd, res)
+
+(* End *)
+
+let expression_trans : prog -> prog
+= fun pgm -> 
+  restore_pgm (trans_pgm pgm)

@@ -117,7 +117,8 @@ let rec eval_aexp : aexp -> Memory.t -> value
 
 and eval_lv : lv -> Memory.t -> value
 = fun lv mem ->
-  if (Unix.gettimeofday() -. !start_time >0.2) then raise TimeoutError
+  if (Unix.gettimeofday() -. !start_time >0.2) 
+  then let _ = print_endline "TimeOut" in raise TimeoutError
   else
   match lv with
   | Var x -> Memory.find x mem
@@ -146,7 +147,8 @@ and eval_bop : bop -> value -> value -> value
 
 and eval_bexp : bexp -> Memory.t -> bool
 = fun bexp mem ->
-  if (Unix.gettimeofday() -. !start_time >0.2) then raise TimeoutError
+  if (Unix.gettimeofday() -. !start_time >0.2) 
+  then let _ = print_endline "TimeOut" in raise TimeoutError
   else
   match bexp with
   | True -> true 
@@ -161,7 +163,8 @@ and eval_bexp : bexp -> Memory.t -> bool
 
 and eval_cmd : cmd -> Memory.t -> Memory.t
 = fun cmd mem ->
-  if (Unix.gettimeofday() -. !start_time >0.2) then raise TimeoutError
+  if (Unix.gettimeofday() -. !start_time >0.2) 
+  then let _ = print_endline "TimeOut" in raise TimeoutError
   else
   match cmd with
   | Assign (Var x, aexp) -> Memory.add x (eval_aexp aexp mem) mem

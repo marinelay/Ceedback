@@ -207,6 +207,7 @@ let onestep_equivalence : lv list -> prog -> prog
 = fun lv_comps pgm ->
   let pgm' = expression_simplification pgm in
   let pgm' = expression_reorder pgm' in
+  let pgm' = expression_trans pgm' in
     pgm'
 
 let rec equivalence : lv list -> int * prog -> int * prog

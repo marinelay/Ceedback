@@ -146,7 +146,17 @@ let nextof_c : lv list -> Workset.work * cmd -> cmd BatSet.t -> Workset.work Bat
 
 
   (* Pruning Infinite case *)
+
 let rec infinite_possible : Workset.work -> bool
+= fun (_, (, cmd, _)) -> infinite cmd
+
+and infinite : cmd -> bool
+= fun cmd ->
+  match cmd with
+  | Seq (c1, c2) | If(_, c1, c2) -> infinite c1 || infinite c2
+  | While (b, c) ->
+  
+(*let rec infinite_possible : Workset.work -> bool
 = fun (_, (_,cmd,_)) -> infinite cmd
 
 and infinite : cmd -> bool
@@ -208,7 +218,7 @@ and list_of_cmd : cmd -> cmd list
 = fun cmd -> 
   match cmd with
   | Seq (c1,c2) -> (list_of_cmd c1)@(list_of_cmd c2)
-  | _ -> [cmd]
+  | _ -> [cmd]*)
 
 
     (* Update Components *)
@@ -397,6 +407,7 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
         let nextstates = next exp_set lv_comps (rank,pgm) in
         (*let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in*)
         let nextstates = BatSet.map (fun ns -> equivalence lv_comps ns) nextstates in
+
         let new_workset = BatSet.fold Workset.add nextstates remaining_workset in 
           work exp_set examples lv_comps new_workset
    
