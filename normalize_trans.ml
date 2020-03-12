@@ -123,6 +123,42 @@ let trans_pgm : prog -> tprog
 
 (* Translation taexp to aexp *)
 
+let rec restore_bop : bop -> translist -> aexp
+= fun bop t_list ->
+  if BatMap.is_empty t_list
+  then
+    if bop = Plus || bop = Minus then Int 0 else Int 1
+  else 
+    let (taexp, n) = BatMap.pop t_list in
+    BinOpLv (bop, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
+
+and restore_aexp : taexp -> aexp
+= fun taexp ->
+  match taexp with
+  | TInt n -> Int n
+  | TLv lv -> Lv (restore_lv lv)
+  | TBop (bop, t_list)
+  | TAHole n -> AHole n
+
+and restore_lv : tlv -> lv
+= fun tlv ->
+  match tlv with
+  | TVar x -> Var x
+  | TArr (x, e) -> Arr (x, restore_aexp e)
+
+let rec restore_bexp : tbexp -> bexp
+= fun tbexp ->
+  match tbexp with
+  | TTrue -> True
+  | TFalse -> False
+  | TLt (e1, e2) -> Lt (restore_aexp e1, restore_aexp e2)
+  | TGt (e1, e2) -> Gt (restore_aexp e1, restore_aexp e2)
+  | TEq (e1, e2) -> Eq (restore_aexp e1, restore_aexp e2)
+  | TNot e -> Not (restore_aexp e)
+  | TAnd (e1, e2) -> And (restore_bexp e1, restore_bexp e2)
+  | TOr (e1, e2) -> Or (restore_bexp e1, restore_bexp e2)
+  | TBHole n -> BHole n
+
 let rec restore_cmd : tcmd -> cmd
 = fun tcmd ->
   match tcmd with
