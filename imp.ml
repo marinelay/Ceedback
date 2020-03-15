@@ -67,9 +67,9 @@ exception BufferOverFlow
 let rec cost_a : aexp -> int
 = fun aexp ->
   match aexp with
-  | Int _ -> 10
+  | Int _ -> 15
   | Lv lv -> cost_lv lv
-  | BinOpLv (_,e1,e2) -> 20 + cost_a e1 + cost_a e2
+  | BinOpLv (_,e1,e2) -> 15 + cost_a e1 + cost_a e2
   | AHole _ -> 23
 
 and cost_lv : lv -> int
@@ -94,9 +94,9 @@ and cost_b : bexp -> int
 and cost_c : cmd -> int
 = fun cmd ->
   match cmd with
-  | Assign (lv,a) -> 10 + cost_a (Lv lv) + cost_a a
+  | Assign (lv,a) -> 20 + cost_a (Lv lv) + cost_a a
   | Skip -> 35
-  | Seq (c1,c2) -> 5 + cost_c c1 + cost_c c2
+  | Seq (c1,c2) -> 10 + cost_c c1 + cost_c c2
   | If (b,c1,c2) -> 25 + cost_b b + cost_c c1 + cost_c c2
   | While (b,c) -> 20 + cost_b b + cost_c c 
   | CHole _ -> 23

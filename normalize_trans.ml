@@ -126,16 +126,32 @@ let trans_pgm : prog -> tprog
 
 (* Translation taexp to aexp *)
 
+let rec make_add : int -> aexp -> aexp
+= fun n aexp ->
+  if n = 0 then Int 0
+  else
+    if n > 0
+    then BinOpLv (Plus, aexp, make_add (n-1) aexp)
+    else BinOpLv (Minus, aexp, make_add (n+1) aexp)
+
+let rec make_mult : int -> aexp -> aexp
+= fun n aexp ->
+  if n = 0 then Int 1
+  else
+    if n > 0
+    then BinOpLv (Mult, aexp, make_mult (n-1) aexp)
+    else BinOpLv (Div, aexp, make_mult (n+1) aexp)
+
 let rec restore_bop : bop -> translist -> aexp
 = fun bop t_list ->
   if BatMap.is_empty t_list
   then
     if bop = Plus || bop = Minus then Int 0 else Int 1
   else 
-    let ((taexp, n), t_list) = BatMap.pop t_list in
+    let ((taexp, n), t_list) = BatMap.pop_max_binding t_list in
     (match bop with
-    | Plus | Minus -> BinOpLv (Plus, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
-    | Mult | Div -> BinOpLv (Mult, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
+    | Plus | Minus -> BinOpLv (Plus, BinOpLv(Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
+    | Mult | Div -> BinOpLv (Mult, make_mult n (restore_aexp taexp), restore_bop bop t_list)
     | _ -> BinOpLv (bop, BinOpLv (Mult, Int n, restore_aexp taexp), restore_bop bop t_list)
     )
     

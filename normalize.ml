@@ -203,20 +203,21 @@ and exp_reorder_cmd : cmd -> cmd
 let expression_reorder : prog -> prog
 = fun (args,cmd,res) -> (args, exp_reorder_cmd cmd, res)  
 
-let onestep_equivalence : lv list -> prog -> prog
-= fun lv_comps pgm ->
-  let pgm' = expression_simplification pgm in
+let onestep_equivalence : prog -> prog
+= fun pgm ->
+
+  let pgm' = expression_trans pgm in
+  let pgm' = expression_simplification pgm' in  
   let pgm' = expression_reorder pgm' in
-  let pgm' = expression_trans pgm' in
     pgm'
 
-let rec equivalence : lv list -> int * prog -> int * prog
-= fun lv_comps (rank, pgm) ->
+let rec equivalence : prog -> prog
+= fun pgm ->
     let (args,_,res) = pgm in
     try
-      let pgm' = onestep_equivalence lv_comps pgm in
-        if BatString.equal (ts_pgm_onerow pgm') (ts_pgm_onerow pgm) then (rank, pgm')
-        else equivalence lv_comps (rank, pgm')
+      let pgm' = onestep_equivalence pgm in
+        if BatString.equal (ts_pgm_onerow pgm') (ts_pgm_onerow pgm) then pgm'
+        else equivalence pgm'
     with 
-      | Not_found -> (rank, (args,Skip,res))
-      | Division_by_zero -> (rank, (args,Skip,res))
+      | Not_found -> (args,Skip,res)
+      | Division_by_zero -> (args,Skip,res)

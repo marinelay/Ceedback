@@ -1,5 +1,6 @@
 open Imp
 open Normalize
+open Infinite
 
 type hole = A of aexp | B of bexp | C of cmd
 
@@ -27,9 +28,9 @@ module Workset = struct
   let add : work -> t -> t
   = fun (rank, pgm) (heap,sset) ->
     try
-      if explored pgm (heap,sset) then (heap,sset)
+      if explored (Normalize.equivalence pgm) (heap,sset) then (heap,sset)
       else
-        (Heap.add (rank,pgm) heap, BatSet.add (ts_pgm_onerow pgm) sset)
+        (Heap.add (rank,pgm) heap, BatSet.add (ts_pgm_onerow (Normalize.equivalence pgm)) sset)
     with
       |_ -> (heap,sset)
   let choose : t -> (work * t) option
@@ -143,82 +144,6 @@ let nextof_b : lv list -> Workset.work * bexp -> bexp BatSet.t -> Workset.work B
 let nextof_c : lv list -> Workset.work * cmd -> cmd BatSet.t -> Workset.work BatSet.t
   = fun lv_comps (p, ch) c_comps ->
   gen_nextstates_c c_comps (p, ch)
-
-
-  (* Pruning Infinite case *)
-
-let rec infinite_possible : Workset.work -> bool
-= fun (_, (, cmd, _)) -> infinite cmd
-
-and infinite : cmd -> bool
-= fun cmd ->
-  match cmd with
-  | Seq (c1, c2) | If(_, c1, c2) -> infinite c1 || infinite c2
-  | While (b, c) ->
-  
-(*let rec infinite_possible : Workset.work -> bool
-= fun (_, (_,cmd,_)) -> infinite cmd
-
-and infinite : cmd -> bool
-= fun cmd ->
-  match cmd with
-  | Seq (c1,c2) 
-  | If (_,c1,c2) -> infinite c1 || infinite c2
-  | While (b,c) ->
-    let cmd_list = list_of_cmd c in
-    let (remaining_cmd,last_cmd) = BatList.split_at (List.length cmd_list - 1) cmd_list in
-    let last_cmd = List.hd last_cmd in 
-      cntvar_redefined b remaining_cmd || not (permitted_last b last_cmd) || infinite c
-  | _ -> false 
-
-(* if cannot be dtermined -> say true : to be conservative *)  
-and permitted_last : bexp -> cmd -> bool
-= fun bexp cmd ->
-  match bexp, cmd with
-  | BHole _,_
-  | Gt _,CHole _ 
-  | Lt _,CHole _ -> true (* to wait *)
-  | Gt (Lv (Var x), Int _),Assign (Var x',AHole _) 
-    when BatString.equal x x' -> true (* to wait *) 
-  | Gt (Lv (Var x), Int _),Assign (Var x',BinOpLv (Minus, Lv (Var x''), Int n)) 
-    when BatString.equal x x' && BatString.equal x' x'' && n>0 -> true
-  | Lt (Lv (Var x), Int _),Assign (Var x',AHole _)
-    when BatString.equal x x' -> true (* to wait *)
-  | Lt (Lv (Var x), Int _),Assign (Var x',BinOpLv (Plus, Lv (Var x''), Int n))
-    when BatString.equal x x' && BatString.equal x' x'' && n>0 -> true 
-  | _ -> false
-  
-and cntvar_redefined : bexp -> cmd list -> bool
-= fun bexp cmdlist ->
-  let assign_set = List.fold_left (fun acc cmd ->
-    match cmd with
-    | Assign _ -> BatSet.add cmd acc
-    | Seq (c1,c2)     
-    | If (_,c1,c2) -> BatSet.union acc (BatSet.union (set_of_assign c1) (set_of_assign c2))
-    | While (_,c) -> BatSet.union (set_of_assign c) acc
-    | _ -> acc
-  ) BatSet.empty cmdlist in
-    begin
-     match bexp with
-      | Gt (Lv lv1,Lv lv2) -> BatSet.exists (fun cmd -> match cmd with | Assign (lv,_) when lv = lv1 || lv = lv2 -> true | _ -> false) assign_set 
-      | Lt (Lv lv1,Lv lv2) -> BatSet.exists (fun cmd -> match cmd with | Assign (lv,_) when lv = lv1 || lv = lv2 -> true | _ -> false) assign_set
-      | _ -> false
-    end
-
-and set_of_assign : cmd -> cmd BatSet.t 
-= fun cmd ->
-  match cmd with
-  | Assign _ -> BatSet.singleton cmd
-  | Seq (c1,c2) 
-  | If (_,c1,c2) -> BatSet.union (set_of_assign c1) (set_of_assign c2)
-  | While (_,c) -> set_of_assign c
-  | _ -> BatSet.empty
-
-and list_of_cmd : cmd -> cmd list 
-= fun cmd -> 
-  match cmd with
-  | Seq (c1,c2) -> (list_of_cmd c1)@(list_of_cmd c2)
-  | _ -> [cmd]*)
 
 
     (* Update Components *)
@@ -357,6 +282,11 @@ let find_choles : prog -> cmd BatSet.t
     | _ -> BatSet.empty
   in choles cmd
 
+
+
+
+
+
 let next : components -> lv list -> Workset.work -> Workset.work BatSet.t
 = fun components lv_comps (rank, pgm) ->
   let (acomps, bcomps, ccomps) = components in
@@ -402,11 +332,15 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
     else 
       if Abs.hopeless pgm examples lv_comps then let _ = print_endline "Hopeless"; in  work exp_set examples lv_comps remaining_workset
       else 
+
         let exp_set = update_components exp_set in
 
         let nextstates = next exp_set lv_comps (rank,pgm) in
-        (*let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in*)
-        let nextstates = BatSet.map (fun ns -> equivalence lv_comps ns) nextstates in
+
+        let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in
+
+        let nextstates = BatSet.map (fun (rank, pgm) -> (rank, equivalence pgm)) nextstates in
+
 
         let new_workset = BatSet.fold Workset.add nextstates remaining_workset in 
           work exp_set examples lv_comps new_workset

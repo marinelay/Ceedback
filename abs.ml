@@ -276,7 +276,7 @@ let rec prune_by : bexp -> State.t -> State.t
        let meet_e1 = Itv.meet e1_itv (Itv.lower_to_pinf (Itv.itv_inc_one e2_itv)) in
        let meet_e2 = Itv.meet e2_itv (Itv.ninf_to_upper (Itv.itv_dec_one e1_itv)) in
        let state' = State.add (absloc_of_aexp e1 state) (meet_e1, e1_sym) state in
-       let state'' = State.add (absloc_of_aexp e1 state) (meet_e2, e2_sym) state' in
+       let state'' = State.add (absloc_of_aexp e2 state) (meet_e2, e2_sym) state' in
        (*let state' = State.add (absloc_of_lv lv1 state) (meet_lv1, lv1_sym) state in
        let state'' = State.add (absloc_of_lv lv2 state) (meet_lv2, lv2_sym) state' in*)
          state''
@@ -335,6 +335,8 @@ let rec abs_eval_cmd : lv list -> int -> cmd -> State.t -> State.t
   | If(b, c1, c2) -> cond lv_comps (2, b, c1, c2) state
   | While (b,c) ->
     let next = cond lv_comps (cnt, b, c, Skip) state in
+    (*let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->11 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) state in
+    let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->22 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) next in*)
     if State.le next state then prune_by (Not b) next
     else abs_eval_cmd lv_comps (cnt-1) (While (b,c)) next
   | Skip -> state
@@ -355,16 +357,16 @@ and cond : lv list -> (int * bexp * cmd * cmd) -> State.t -> State.t
       State.widen 
        (abs_eval_cmd lv_comps cnt c2 (prune_by (Not b) state)) 
        (abs_eval_cmd lv_comps cnt c1 (prune_by b state))
-    (*
-       let s1 =  (abs_eval_cmd lv_comps cnt c2 state) in
-       let s2 = (abs_eval_cmd lv_comps cnt c1  state) in
+    
+      (*) let s1 =  (abs_eval_cmd lv_comps cnt c2 (prune_by (Not b) state)) in
+       let s2 = (abs_eval_cmd lv_comps cnt c1  (prune_by b state)) in
        let w = State.widen s1 s2 in  
        let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->1 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) (prune_by (Not b) state) in
        let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->2 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) s2 in
        let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->3 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) w in
        let _ = print_endline "" in
-       w
-   *)
+       w*)
+   
   | BTop ->
     if cnt>=0 then
       State.join
