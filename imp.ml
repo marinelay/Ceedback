@@ -185,6 +185,7 @@ and eval_cmd : cmd -> Memory.t -> Memory.t
   | Skip -> mem
   | CHole _ -> raise (Failure "eval_cmd: hole encountered")
 
+
 let rec value_equality : value -> value -> bool
 = fun v1 v2 ->
   match v1, v2 with
@@ -271,3 +272,4 @@ let ts_pgm_rows : prog -> string
   "->\n" ^
   ts_cmd_rows cmd ^
   "return " ^ var ^ ";"
+

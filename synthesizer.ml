@@ -4,6 +4,8 @@ open Infinite
 
 type hole = A of aexp | B of bexp | C of cmd
 
+let timeout_list = ref []
+
 module Workset = struct
   type work = int * prog
 
@@ -304,6 +306,8 @@ let is_solution : prog -> example list -> bool
     try
       Imp.run pgm i = o
     with
+      | TimeoutError ->
+        let _ = timeout_list := pgm::(!timeout_list) in false
       | _ -> false
   ) examples
 
@@ -332,6 +336,7 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
     else 
       if Abs.hopeless pgm examples lv_comps then let _ = print_endline "Hopeless"; in  work exp_set examples lv_comps remaining_workset
       else 
+        let _ = print_endline "Update Components" in
 
         let exp_set = update_components exp_set in
 
@@ -339,13 +344,24 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
 
         let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in
 
+        let _ = print_endline "Equivalence" in
+
         let nextstates = BatSet.map (fun (rank, pgm) -> (rank, equivalence pgm)) nextstates in
 
+        let _ = print_endline "Next WorkSet" in
 
         let new_workset = BatSet.fold Workset.add nextstates remaining_workset in 
           work exp_set examples lv_comps new_workset
    
+let rec print_pgm : prog list -> unit
+= fun prog ->
+  match prog with
+  | hd::tl -> let _ = print_endline (ts_pgm_onerow hd) in print_pgm tl
+  | _ -> ()
+
 let synthesize : components -> example list -> Workset.work BatSet.t  -> lv list -> prog option
 = fun components examples pgm_set lv_comps ->
   let workset = BatSet.fold (fun t set-> Workset.add t set) pgm_set Workset.empty in
-    work components examples lv_comps workset
+  let result = work components examples lv_comps workset in
+  let _ = print_endline "[@@ List @@]" in
+  let _ = print_pgm (!timeout_list) in result

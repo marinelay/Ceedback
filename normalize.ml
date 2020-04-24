@@ -209,6 +209,7 @@ let onestep_equivalence : prog -> prog
   let pgm' = expression_trans pgm in
   let pgm' = expression_simplification pgm' in  
   let pgm' = expression_reorder pgm' in
+  let _ = print_endline (ts_pgm_onerow pgm') in
     pgm'
 
 let rec equivalence : prog -> prog

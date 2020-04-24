@@ -1,5 +1,8 @@
 open Imp
 
+type path = bexp BatList.t
+and path_set = path BatSet.t
+
   (* Pruning Infinite case *)
 
 let rec find_aexp_hole : aexp -> bool
