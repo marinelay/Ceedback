@@ -20,10 +20,10 @@ let rec print_ranked_prog : (int * prog) BatSet.t -> unit
 = fun set ->
   let _ = BatSet.map (fun p -> let (rank, pgm) = p in let _ = print_endline ((string_of_int rank) ^ (ts_pgm_onerow pgm)) in ()) set in ()
 
-let make_lv_list : var list -> var list -> lv list
-= fun int_var_comps arr_var_comps ->
-  List.fold_left (fun acc x -> (Var x)::acc) [] int_var_comps @
-  List.fold_left (fun acc x -> (Arr (x, AHole (0)))::acc) [] arr_var_comps
+let make_lv_list : var BatSet.t -> var BatSet.t -> lv list
+= fun var arr ->
+  BatSet.fold (fun x acc -> (Var x)::acc) var [] @
+  BatSet.fold (fun x acc -> (Arr (x, AHole (0)))::acc) arr []
 
 let main () =
   let usageMsg = "./main.native -input filename" in
@@ -47,13 +47,15 @@ let main () =
       let components = Comp.extract_component solution in
 
       let _ = print_ranked_prog ranked_prog_set in
+      let _ = print_component components in ()
     
-      let lv_comps = make_lv_list int_var_comps arr_var_comps in
+      (*let (var, arr) = Comp.extract_variables pgm in
+      let lv_comps = make_lv_list var arr in
       let pgm = Synthesizer.synthesize components examples ranked_prog_set lv_comps in
       begin
         match pgm with
         | None -> print_endline "Fail to Synthesize"
         | Some pgm -> print_endline (ts_pgm_rows pgm);
-      end
+      end *)
       
 let _ = main ()
