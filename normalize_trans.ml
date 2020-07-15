@@ -78,6 +78,7 @@ and trans_lv : lv -> tlv
   match lv with
   | Var x -> TVar x
   | Arr (x, e) -> TArr (x, trans_aexp e)
+  | AbsVar -> TAbsVar
 
 and trans_bexp : bexp -> tbexp
 = fun bexp ->
@@ -169,6 +170,7 @@ and restore_lv : tlv -> lv
   match tlv with
   | TVar x -> Var x
   | TArr (x, e) -> Arr (x, restore_aexp e)
+  | TAbsVar -> AbsVar
 
 let rec restore_bexp : tbexp -> bexp
 = fun tbexp ->

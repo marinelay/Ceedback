@@ -12,7 +12,7 @@ and aexp =
 and lv =
    | Var of var
    | Arr of var * aexp (* 원랜 var * var 였는데 var * aexp 가 맞는듯 일단*)
-   | AbsVar (* Var일수도 Arr일수도... *)
+   | AbsVar (* assign에서 왼쪽 항 *)
 
 and bexp = 
    | True
@@ -65,41 +65,33 @@ end
 exception TimeoutError
 exception BufferOverFlow
 
-let rec cost_a : aexp -> int -> int
-= fun aexp cnt ->
+let rec cost_a : aexp -> int
+= fun aexp ->
   match aexp with
   | Int _ -> 15
   | Lv lv -> cost_lv lv
-<<<<<<< Updated upstream
-  | BinOpLv (_,e1,e2) -> (cnt * cnt) + 15 + cost_a e1 (cnt+1) + cost_a e2 (cnt+1)
-=======
-<<<<<<< HEAD
   | BinOpLv (_,e1,e2) -> 
     let e1_cost = cost_a e1 in
     let e1_cost = if e1_cost > 40 then e1_cost*3 else e1_cost in
     let e2_cost = cost_a e2 in
     let e2_cost = if e2_cost > 40 then e2_cost*3 else e2_cost in
     15 + e1_cost + e2_cost
-=======
-  | BinOpLv (_,e1,e2) -> (cnt * cnt) + 15 + cost_a e1 (cnt+1) + cost_a e2 (cnt+1)
->>>>>>> master
->>>>>>> Stashed changes
-  | AHole _ -> 23
+  | AHole _ -> 5
 
 and cost_lv : lv -> int
 = fun lv ->
   match lv with
   | Var _ -> 10
-  | Arr (_, e) -> 10 + cost_a e 0
+  | Arr (_, e) -> 10 + cost_a e
 
 and cost_b : bexp -> int
 = fun bexp ->
   match bexp with
   | True -> 25
   | False -> 25
-  | Gt (e1,e2) -> 10 + cost_a e1 0 + cost_a e2 0
-  | Lt (e1,e2) -> 10 + cost_a e1 0 + cost_a e2 0
-  | Eq (e1,e2) -> 10 + cost_a e1 0 + cost_a e2 0
+  | Gt (e1,e2) -> 10 + cost_a e1 + cost_a e2
+  | Lt (e1,e2) -> 10 + cost_a e1 + cost_a e2
+  | Eq (e1,e2) -> 10 + cost_a e1 + cost_a e2
   | Not b -> 10 + cost_b b
   | Or (b1,b2) -> 10 + cost_b b1 + cost_b b2
   | And (b1,b2) -> 10 + cost_b b1 + cost_b b2
@@ -108,12 +100,12 @@ and cost_b : bexp -> int
 and cost_c : cmd -> int
 = fun cmd ->
   match cmd with
-  | Assign (lv,a) -> 20 + cost_a (Lv lv) 0 + cost_a a 0
+  | Assign (lv,a) -> 10 + cost_a (Lv lv) + cost_a a
   | Skip -> 35
   | Seq (c1,c2) -> 10 + cost_c c1 + cost_c c2
-  | If (b,c1,c2) -> 25 + cost_b b + cost_c c1 + cost_c c2
-  | While (b,c) -> 20 + cost_b b + cost_c c 
-  | CHole _ -> 23
+  | If (b,c1,c2) -> 60 + cost_b b + cost_c c1 + cost_c c2
+  | While (b,c) -> 100 + cost_b b + cost_c c 
+  | CHole _ ->23
   
 let rec cost : prog -> int
 = fun (_,cmd,_) -> cost_c cmd 

@@ -47,7 +47,7 @@ let main () =
       let components = Comp.extract_component solution in
 
       let _ = print_ranked_prog ranked_prog_set in
-      let _ = print_component components in ()
+      let _ = print_component components in () 
     
       (*let (var, arr) = Comp.extract_variables pgm in
       let lv_comps = make_lv_list var arr in

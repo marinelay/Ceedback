@@ -14,6 +14,7 @@ and translist = (taexp, int) BatMap.t
 and tlv =
   | TVar of var
   | TArr of var * taexp
+  | TAbsVar
 
 and tbexp =
   | TTrue | TFalse

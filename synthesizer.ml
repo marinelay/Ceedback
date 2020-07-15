@@ -1,6 +1,7 @@
 open Imp
 open Normalize
 open Infinite
+open Optimizer
 
 type hole = A of aexp | B of bexp | C of cmd
 
@@ -343,6 +344,7 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
         let nextstates = next exp_set lv_comps (rank,pgm) in
 
         let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in
+        let nextstates = BatSet.map (fun (rank, pgm) -> (rank, optimize pgm lv_comps)) nextstates in
 
         let _ = print_endline "Equivalence" in
 

@@ -335,18 +335,10 @@ let rec abs_eval_cmd : lv list -> int -> cmd -> State.t -> State.t
   | If(b, c1, c2) -> cond lv_comps (2, b, c1, c2) state
   | While (b,c) ->
     let next = cond lv_comps (cnt, b, c, Skip) state in
-<<<<<<< HEAD
     (*let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->11 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) state in
     let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->22 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) next in*)
-    if State.le next state then prune_by (Not b) next
-=======
-    let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->11 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) state in
-    let _ = BatMap.iter (fun x (itv,sym) -> print_endline (x ^ " ->22 " ^ (Itv.to_string itv) ^ ", " ^ (Symbolic.to_string sym))) next in
-    if State.le next state || cnt < - 50 then prune_by (Not b) next
-<<<<<<< Updated upstream
-=======
->>>>>>> master
->>>>>>> Stashed changes
+    (*if State.le next state then prune_by (Not b) next*)
+    if State.le next state || cnt < -10 then prune_by (Not b) next
     else abs_eval_cmd lv_comps (cnt-1) (While (b,c)) next
   | Skip -> state
   | CHole _ ->

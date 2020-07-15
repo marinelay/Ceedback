@@ -13,9 +13,9 @@ Examples
 Partial Program
 fun n ->
 r = 1;
-while (n>1){
+while (n<1){
     r = r+n;
-    n = n-1;
+    n = n+1;
 }
 return r;
 

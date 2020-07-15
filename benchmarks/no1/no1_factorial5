@@ -12,10 +12,10 @@ Examples
 
 Partial Program
 fun n ->
-r = 0;
+r = 1;
 
 if (n == 0) {
-    r = 1;
+    r = 0;
 } else {
     while (n>1){
         r = r*n;

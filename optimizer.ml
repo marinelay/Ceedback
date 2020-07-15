@@ -12,7 +12,7 @@ let instr_count = ref 0
 let init_instr () = (instr_count := 0)
 let new_instr () = (instr_count := !instr_count+1; !instr_count)
 
-
+(*
 let rec find_var_aexp : aexp -> var BatSet.t
 = fun aexp ->
   match aexp with
@@ -102,47 +102,82 @@ let rec make_blocks : cmd -> edge -> blocks -> (edge * blocks)
     (* exit loop *)
     let edge = BatSet.add (start, !instr_count+1) edge in
     (edge, blocks)
+*)
 
+let rec find_var_aexp : aexp -> var BatSet.t -> var BatSet.t
+= fun aexp lv_set ->
+  match aexp with
+  | Lv lv -> find_var_lv lv lv_set
+  | BinOpLv (_, e1, e2) ->
+    BatSet.union (find_var_aexp e1 lv_set) (find_var_aexp e2 lv_set)
+  | AHole _ -> lv_set
+  | _ -> BatSet.empty
 
-let rec delete_dead : cmd -> delete -> (delete * cmd)
-= fun cmd delete ->
+and find_var_lv : lv -> var BatSet.t -> var BatSet.t
+= fun lv lv_set ->
+  match lv with
+  | Var v -> BatSet.singleton v
+  | Arr (v, e) -> BatSet.add v (find_var_aexp e lv_set)
+  | AbsVar -> BatSet.empty
+
+let rec find_var_bexp : bexp -> var BatSet.t -> var BatSet.t
+= fun bexp lv_set ->
+  match bexp with
+  | Gt (e1, e2) | Lt (e1, e2) | Eq (e1, e2) ->
+    BatSet.union (find_var_aexp e1 lv_set) (find_var_aexp e2 lv_set)
+  | Not b -> find_var_bexp b lv_set
+  | Or (b1, b2) | And (b1, b2) ->
+    BatSet.union (find_var_bexp b1 lv_set) (find_var_bexp b2 lv_set)
+  | BHole _ -> lv_set
+  | _ -> BatSet.empty
+
+let rec delete_dead : cmd -> delete -> var BatSet.t -> (delete * cmd)
+= fun cmd delete lv_set ->
   match cmd with
   | Assign (lv, aexp) ->
     begin match lv with
     | Var v ->
       if BatSet.mem v delete then (BatSet.remove v delete, Skip)
       else
-      let delete = BatSet.diff (BatSet.add v delete) (find_var_aexp aexp) in
+      let delete = BatSet.diff (BatSet.add v delete) (find_var_aexp aexp lv_set) in
       (delete, cmd)
     | Arr (v, e) ->
       if BatSet.mem v delete then (BatSet.remove v delete, Skip)
       else
-      let delete = BatSet.diff (BatSet.add v delete) (BatSet.union (find_var_aexp e) (find_var_aexp aexp)) in
+      let delete = BatSet.diff (BatSet.add v delete) (BatSet.union (find_var_aexp e lv_set) (find_var_aexp aexp lv_set)) in
+      (delete, cmd)
+    | AbsVar ->
+      let delete = BatSet.diff delete (find_var_aexp aexp lv_set) in
       (delete, cmd)
     end
   | Skip -> (delete, Skip)
   | Seq (c1, c2) ->
-    let (delete, c2) = delete_dead c2 delete in
-    let (delete, c1) = delete_dead c1 delete in
+    let (delete, c2) = delete_dead c2 delete lv_set in
+    let (delete, c1) = delete_dead c1 delete lv_set in
     (delete, Seq (c1, c2))
   | If (b, c1, c2) ->
-    let (delete', c1) = delete_dead c1 delete in
-    let (delete'', c2) = delete_dead c2 delete in
-    let delete = BatSet.diff (BatSet.intersect delete' delete'') (find_var_bexp b)
+    let (delete', c1) = delete_dead c1 delete lv_set in
+    let (delete'', c2) = delete_dead c2 delete lv_set in
+    let delete = BatSet.diff (BatSet.intersect delete' delete'') (find_var_bexp b lv_set) in
     (delete, If (b, c1, c2))
   | While (b, c) ->
-    let (delete', c) = delete_dead c BatSet.empty in
-    let delete' = BatSet.diff delete' (find_var_bexp b) in
-    let (delete, c) = delete_dead c (BatSet.intersect delete delete') in
-    let delete = BatSet.diff delete (find_var_bexp b) in
+    let (delete', c) = delete_dead c BatSet.empty lv_set in
+    let delete' = BatSet.diff delete' (find_var_bexp b lv_set) in
+    let (delete, c) = delete_dead c (BatSet.intersect delete delete') lv_set in
+    let delete = BatSet.diff delete (find_var_bexp b lv_set) in
     (delete, While (b, c))
-  | CHole _ -> (delete, cmd)
+  | CHole _ -> (BatSet.empty, cmd)
 
 let rec optimize : prog -> lv list -> prog
 = fun (args, cmd, res) lv_list ->
   let lv_set = List.fold_left (fun lv_set lv -> 
-    BatSet.add lv lv_set
+    let v =
+      match lv with
+      | Var v -> v
+      | Arr (v, _) -> v
+    in
+    BatSet.add v lv_set
   ) BatSet.empty lv_list in
-  let (_, cmd) = delete_dead cmd (BatSet.remove res lv_set) in
+  let (_, cmd) = delete_dead cmd (BatSet.remove res lv_set) lv_set in
   (args, cmd, res)
   
