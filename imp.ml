@@ -70,7 +70,20 @@ let rec cost_a : aexp -> int -> int
   match aexp with
   | Int _ -> 15
   | Lv lv -> cost_lv lv
+<<<<<<< Updated upstream
   | BinOpLv (_,e1,e2) -> (cnt * cnt) + 15 + cost_a e1 (cnt+1) + cost_a e2 (cnt+1)
+=======
+<<<<<<< HEAD
+  | BinOpLv (_,e1,e2) -> 
+    let e1_cost = cost_a e1 in
+    let e1_cost = if e1_cost > 40 then e1_cost*3 else e1_cost in
+    let e2_cost = cost_a e2 in
+    let e2_cost = if e2_cost > 40 then e2_cost*3 else e2_cost in
+    15 + e1_cost + e2_cost
+=======
+  | BinOpLv (_,e1,e2) -> (cnt * cnt) + 15 + cost_a e1 (cnt+1) + cost_a e2 (cnt+1)
+>>>>>>> master
+>>>>>>> Stashed changes
   | AHole _ -> 23
 
 and cost_lv : lv -> int
