@@ -68,15 +68,15 @@ exception BufferOverFlow
 let rec cost_a : aexp -> int
 = fun aexp ->
   match aexp with
-  | Int _ -> 15
+  | Int _ -> 10
   | Lv lv -> cost_lv lv
-  | BinOpLv (_,e1,e2) -> 
-    let e1_cost = cost_a e1 in
-    let e1_cost = if e1_cost > 40 then e1_cost*3 else e1_cost in
+  | BinOpLv (_,e1,e2) -> 20 + cost_a e1 + cost_a e2
+    (*let e1_cost = cost_a e1 in
+    let e1_cost = if e1_cost > 44 then e1_cost*e1_cost else e1_cost in
     let e2_cost = cost_a e2 in
-    let e2_cost = if e2_cost > 40 then e2_cost*3 else e2_cost in
-    15 + e1_cost + e2_cost
-  | AHole _ -> 5
+    let e2_cost = if e2_cost > 44 then e2_cost*e2_cost else e2_cost in
+    25 + e1_cost + e2_cost*)
+  | AHole _ -> 60
 
 and cost_lv : lv -> int
 = fun lv ->
@@ -89,23 +89,26 @@ and cost_b : bexp -> int
   match bexp with
   | True -> 25
   | False -> 25
-  | Gt (e1,e2) -> 10 + cost_a e1 + cost_a e2
-  | Lt (e1,e2) -> 10 + cost_a e1 + cost_a e2
-  | Eq (e1,e2) -> 10 + cost_a e1 + cost_a e2
+  | Gt (e1,e2) -> 20 + cost_a e1 + cost_a e2 
+    (*let cost = cost_a e1 + cost_a e2 in
+    let cost = if cost > 60 then cost*cost else cost in
+    10 + cost*)
+  | Lt (e1,e2) -> 20 + cost_a e1 + cost_a e2 
+  | Eq (e1,e2) -> 20 + cost_a e1 + cost_a e2 
   | Not b -> 10 + cost_b b
-  | Or (b1,b2) -> 10 + cost_b b1 + cost_b b2
-  | And (b1,b2) -> 10 + cost_b b1 + cost_b b2
-  | BHole _ -> 23
+  | Or (b1,b2) -> 20 + cost_b b1 + cost_b b2
+  | And (b1,b2) -> 20 + cost_b b1 + cost_b b2
+  | BHole _ -> 80
 
 and cost_c : cmd -> int
 = fun cmd ->
   match cmd with
-  | Assign (lv,a) -> 10 + cost_a (Lv lv) + cost_a a
+  | Assign (lv,a) -> 50 + cost_a (Lv lv) + cost_a a
   | Skip -> 35
-  | Seq (c1,c2) -> 10 + cost_c c1 + cost_c c2
-  | If (b,c1,c2) -> 60 + cost_b b + cost_c c1 + cost_c c2
-  | While (b,c) -> 100 + cost_b b + cost_c c 
-  | CHole _ ->23
+  | Seq (c1,c2) -> 50 + cost_c c1 + cost_c c2
+  | If (b,c1,c2) -> 100 + cost_b b + cost_c c1 + cost_c c2
+  | While (b,c) -> 200 + cost_b b + cost_c c 
+  | CHole _ -> 100
   
 let rec cost : prog -> int
 = fun (_,cmd,_) -> cost_c cmd 
@@ -113,7 +116,7 @@ let rec cost : prog -> int
 let rec eval_aexp : aexp -> Memory.t -> value
 = fun aexp mem ->
   if (Unix.gettimeofday() -. !start_time >0.2) 
-  then let _ = print_endline "TimeOut" in raise TimeoutError
+  then let _ = print_endline "TimeOutAexp" in raise TimeoutError
   else
   match aexp with
   | Int n -> VInt n
@@ -124,7 +127,7 @@ let rec eval_aexp : aexp -> Memory.t -> value
 and eval_lv : lv -> Memory.t -> value
 = fun lv mem ->
   if (Unix.gettimeofday() -. !start_time >0.2) 
-  then let _ = print_endline "TimeOut" in raise TimeoutError
+  then let _ = print_endline "TimeOutLv" in raise TimeoutError
   else
   match lv with
   | Var x -> Memory.find x mem
@@ -154,7 +157,7 @@ and eval_bop : bop -> value -> value -> value
 and eval_bexp : bexp -> Memory.t -> bool
 = fun bexp mem ->
   if (Unix.gettimeofday() -. !start_time >0.2) 
-  then let _ = print_endline "TimeOut" in raise TimeoutError
+  then let _ = print_endline "TimeOutBexp" in raise TimeoutError
   else
   match bexp with
   | True -> true 
@@ -170,7 +173,7 @@ and eval_bexp : bexp -> Memory.t -> bool
 and eval_cmd : cmd -> Memory.t -> Memory.t
 = fun cmd mem ->
   if (Unix.gettimeofday() -. !start_time >0.2) 
-  then let _ = print_endline "TimeOut" in raise TimeoutError
+  then let _ = print_endline "TimeOutCmd" in raise TimeoutError
   else
   match cmd with
   | Assign (Var x, aexp) -> Memory.add x (eval_aexp aexp mem) mem

@@ -10,7 +10,6 @@ Examples
 8 -> 40320;
 9 -> 362880;
 
-
 Partial Program
 fun n ->
 r = 1;

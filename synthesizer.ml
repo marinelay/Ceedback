@@ -55,7 +55,8 @@ let replace_aexp : prog -> aexp -> aexp -> prog
   let rec replace_a : cmd -> aexp -> aexp -> cmd
   = fun cmd ah acandi ->
     match cmd with
-    | Assign (x, e) -> Assign (x, replace_a'' e ah acandi)
+    | Assign (x, e) -> 
+      Assign (x, replace_a'' e ah acandi)
     | Seq (c1, c2) -> Seq (replace_a c1 ah acandi, replace_a c2 ah acandi)
     | If (b, c1, c2) -> If (replace_a' b ah acandi, replace_a c1 ah acandi, replace_a c2 ah acandi)
     | While (b, c) -> While (replace_a' b ah acandi, replace_a c ah acandi)
@@ -76,8 +77,8 @@ let replace_aexp : prog -> aexp -> aexp -> prog
     | Lv lv ->
       (match lv with
       | Var x -> aexp
-      | Arr (x, e) -> replace_a'' e ah acandi
-      )
+      | Arr (x, e) -> Lv (Arr (x, (replace_a'' e ah acandi))
+      ))
     | BinOpLv (bop, e1, e2) -> BinOpLv (bop, replace_a'' e1 ah acandi, replace_a'' e2 ah acandi)
     | AHole n when ah = aexp -> acandi
     | _ -> aexp
@@ -137,7 +138,7 @@ let nextof_a : lv list -> Workset.work * aexp -> aexp BatSet.t -> Workset.work B
   let variable = List.fold_left (fun acc lv -> 
     match lv with
     | Var x -> BatSet.add (Lv lv) acc
-    | Arr (x, _) -> BatSet.add (Lv (Arr (x, ahole()))) acc) BatSet.empty lv_comps in
+    | Arr (x, y) -> BatSet.add (Lv (Arr (x, y))) acc) BatSet.empty lv_comps in
   gen_nextstates_a (BatSet.union variable a_comps) ((rank,p), ah)
 
 let nextof_b : lv list -> Workset.work * bexp -> bexp BatSet.t -> Workset.work BatSet.t
@@ -330,7 +331,9 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
   match Workset.choose workset with
   | None -> None
   | Some ((rank,pgm), remaining_workset) ->
+    print_endline "[Current]";
     print_endline (ts_pgm_onerow pgm) ;
+    print_endline "[End]";
     if is_closed pgm then
       if is_solution pgm examples then Some pgm(*(equivalence lv_comps pgm)*)
       else work exp_set examples lv_comps remaining_workset
@@ -343,12 +346,15 @@ let rec work : components -> example list -> lv list -> Workset.t -> prog option
 
         let nextstates = next exp_set lv_comps (rank,pgm) in
 
-        let nextstates = BatSet.filter (fun ns -> not (infinite_possible ns)) nextstates in
+        let nextstates = BatSet.filter (fun ns -> print_endline (ts_pgm_onerow pgm); not (infinite_possible ns)) nextstates in
+        
+        print_endline "optimize";
+
         let nextstates = BatSet.map (fun (rank, pgm) -> (rank, optimize pgm lv_comps)) nextstates in
 
-        let _ = print_endline "Equivalence" in
+        print_endline "Equivalence";
 
-        let nextstates = BatSet.map (fun (rank, pgm) -> (rank, equivalence pgm)) nextstates in
+      let nextstates = BatSet.map (fun (rank, pgm) -> (rank, equivalence pgm)) nextstates in
 
         let _ = print_endline "Next WorkSet" in
 

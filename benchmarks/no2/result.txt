@@ -1,0 +1,27 @@
+no2_sigma_1 -> OK
+while 조건문 다름
+
+no2_sigma_2 -> No : 숫자가 무한 증가하는 버그 있음
+while 조건문과 내용 n=n+1 다름
+
+equivalence 제외시켜도 No
+
+no2_sigma_3 -> No : 숫자가 무한 증가하는 버그 때문에 안됨
+while 내용 n=n+1 다름
+
+But, equivalnce 제외시키면 OK
+
+no2_sigma_4 -> No
+while 내용 전체가 다름
+
+no2_sigma_5 -> OK
+while 내용 n=n+1을 삭제해야 됨
+
+equivalence 제외시켜도 No
+
+no2_sigma_6 -> OK
+초기화문 r=1이 다름
+
+no2_sigma_7 -> No
+n=n+1을 추가해야하는데 개오래걸림...
+

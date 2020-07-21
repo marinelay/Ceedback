@@ -1,3 +1,7 @@
 cd Users/user/Desktop/myStudy/Ceedback/
 
-./main.native -input benchmarks/no1_factorial2 -solution benchmarks/no1_factorial_sol
+./main.native -input benchmarks/no1_factorial1 -solution benchmarks/no1_factorial_sol
+
+./main.native -input benchmarks/no2/no2_sigma_1 -solution benchmarks/no2/no2_sigma_sol
+
+./main.native -input benchmarks/no3/no3_arr_sum_1 -solution benchmarks/no3/no3_arr_sum_sol

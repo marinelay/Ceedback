@@ -112,6 +112,7 @@ pgm:
   ;
 
 aexp: 
+  | LPAREN aexp RPAREN {$2}
   | integer {Imp.Int $1}
   | lv {Imp.Lv $1}
   | aexp bop aexp {Imp.BinOpLv ($2,$1,$3)}
@@ -123,6 +124,7 @@ lv:
   | VAR LBRACKET aexp RBRACKET {Imp.Arr ($1,$3)}
 
 bexp:
+  | LPAREN bexp RPAREN {$2}
   | TRUE {Imp.True}
   | FALSE {Imp.False}
   | aexp GT aexp {Imp.Gt ($1,$3)}

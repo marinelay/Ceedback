@@ -1,0 +1,30 @@
+(* accepts n, return 1+2+...+n *)
+Examples
+0 -> 0;
+1 -> 1;
+2 -> 3;
+3 -> 6;
+4 -> 10;
+5 -> 15;
+6 -> 21;
+7 -> 28;
+8 -> 36;
+9 -> 45;
+
+Partial Program
+fun n ->
+r=0;
+while (n > 0){
+    r = r + n;
+    n = n + 1;
+}
+return r;
+
+Int Comps
+0,1
+
+Int Var Comps
+r,n,t
+
+Array Var Comps
+none

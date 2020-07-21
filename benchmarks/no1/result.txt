@@ -1,0 +1,20 @@
+factorial1 -> OK
+while문의 조건문 부분이 틀림
+
+factorial2 -> OK
+while문 내용의 r=r+n이 틀림
+
+factorial3 -> No : while문 전체를 고쳐야 함
+while문 조건문과 내용 r=r-n이 틀림
+
+factorial4 -> OK
+제일 처음 초기화문 r=0이 틀림
+
+factorial5 -> OK
+if문이 없어야 하던지 if문 내용을 고쳐야 됨 (조건문을 false로 만들면서 fix함)
+
+factorial6 -> No : while문 전체를 고쳐야함 / while문 안은 exmaple로 실행도 되지 않으므로 안쪽만 고치는 경우도 없음
+while문 조건문과 내용 자체가 틀림
+
+factorial7 -> No : while문 조건문을 고치는데 시간이 너무 많이 들음 (내용 고치는걸로 잘 안감 -> cost 조절 필요...)
+while문 내용 자체가 틀림

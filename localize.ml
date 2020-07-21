@@ -11,6 +11,8 @@ let extend_set = BatSet.add
 let trace_set = ref empty_set
 let init_set () = (trace_set := empty_set)
 
+let start_time = ref 0.0
+
 module Labeled_Memory = struct
   type t = (var,labeled_value) BatMap.t
   let add = BatMap.add
@@ -36,6 +38,8 @@ exception BufferOverFlow
 let rec eval_aexp : labeled_aexp -> Labeled_Memory.t -> labeled_value
 = fun (label, aexp) mem ->
   (trace_set := extend_set label !trace_set);
+  if (Unix.gettimeofday() -. !start_time >0.2) then raise (Failure "Timeout")
+  else
   match aexp with
   | Int n -> VInt n
   | Lv lv -> eval_lv lv mem
@@ -45,6 +49,8 @@ let rec eval_aexp : labeled_aexp -> Labeled_Memory.t -> labeled_value
 and eval_lv : labeled_lv -> Labeled_Memory.t -> labeled_value
 = fun (label, lv) mem ->
   (trace_set := extend_set label !trace_set);
+  if (Unix.gettimeofday() -. !start_time >0.2) then raise (Failure "Timeout")
+  else
   match lv with
   | Var x -> Memory.find x mem
   | Arr (x,e) ->
@@ -74,6 +80,8 @@ and eval_bop : bop -> labeled_value -> labeled_value -> labeled_value
 and eval_bexp : labeled_bexp -> Labeled_Memory.t -> bool
 = fun (label, bexp) mem ->
   (trace_set := extend_set label !trace_set);
+  if (Unix.gettimeofday() -. !start_time >0.2) then raise (Failure "Timeout")
+  else
   match bexp with
   | True -> true 
   | False -> false
@@ -88,6 +96,8 @@ and eval_bexp : labeled_bexp -> Labeled_Memory.t -> bool
 and eval_cmd : labeled_cmd -> Labeled_Memory.t -> Labeled_Memory.t
 = fun (label, cmd) mem ->
   (trace_set := extend_set label !trace_set);
+  if (Unix.gettimeofday() -. !start_time >0.2) then raise (Failure "Timeout")
+  else
   match cmd with
   | Assign (Var x, aexp) -> Labeled_Memory.add x (eval_aexp aexp mem) mem
   | Assign (Arr (x, e), aexp) ->
@@ -109,6 +119,7 @@ and eval_cmd : labeled_cmd -> Labeled_Memory.t -> Labeled_Memory.t
 
 let run : labeled_prog -> labeled_value list -> labeled_value (* input = value list *)
 = fun (args,cmd,res) input_params ->
+  start_time:=Unix.gettimeofday();
   let init_mem = 
   List.fold_left2 (fun mem x v -> Labeled_Memory.add x v mem) Labeled_Memory.empty args input_params in
     let r = Labeled_Memory.find res (eval_cmd cmd init_mem) in
@@ -144,7 +155,7 @@ let weight : labeled_prog -> examples -> examples -> (int, float) BatMap.t
 	let counter_map = gen_label_map neg l_pgm in
 	let pass_map = gen_label_map pos l_pgm in
 	let counter_num = List.length neg in
-	let pass_num = List.length pos in
+  let pass_num = List.length pos in
 	let weight_function = BatMap.foldi (fun label n result ->
 		if(BatMap.mem label pass_map) then 
 			let w = (float_of_int (BatMap.find label pass_map)) /. float_of_int(counter_num+pass_num) in
@@ -170,6 +181,7 @@ let localization : prog -> examples -> (int * prog) BatSet.t
 = fun pgm examples ->
   let (counter_examples,pass_examples) = find_counter_examples pgm examples in
   let l_pgm = Labeling.labeling_prog pgm in 
+  
   let weight_function = weight l_pgm pass_examples counter_examples in
   let avg = cost_avg weight_function l_pgm in
   let candidate_set = BatMap.foldi (fun label weight set ->

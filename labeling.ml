@@ -25,7 +25,7 @@ and labeling_bexp : bexp -> labeled_bexp
   | Eq (e1, e2) -> (new_label(), Eq (labeling_aexp e1, labeling_aexp e2))
   | Not e -> (new_label(), Not (labeling_bexp e))
   | Or (e1, e2) -> (new_label(), Or (labeling_bexp e1, labeling_bexp e2))
-  | And (e1, e2) -> (new_label(), Or (labeling_bexp e1, labeling_bexp e2))
+  | And (e1, e2) -> (new_label(), And (labeling_bexp e1, labeling_bexp e2))
   | BHole n -> (new_label (), BHole n)
 
 and labeling_cmd : cmd -> labeled_cmd
@@ -67,7 +67,7 @@ and unlabeling_bexp : labeled_bexp -> bexp
   | Eq (e1, e2) -> Eq (unlabeling_aexp e1, unlabeling_aexp e2)
   | Not e -> Not (unlabeling_bexp e)
   | Or (e1, e2) -> Or (unlabeling_bexp e1, unlabeling_bexp e2)
-  | And (e1, e2) -> Or (unlabeling_bexp e1, unlabeling_bexp e2)
+  | And (e1, e2) -> And (unlabeling_bexp e1, unlabeling_bexp e2)
   | BHole n -> BHole n
 
 and unlabeling_cmd : labeled_cmd -> cmd

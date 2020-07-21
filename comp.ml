@@ -13,6 +13,8 @@ let rec find_variable : cmd -> var BatSet.t -> var BatSet.t -> (var BatSet.t * v
     find_variable c2 var arr
   | While (_, c) ->
     find_variable c var arr
+  | CHole _ -> (var, arr)
+  | Skip -> (var, arr)
 
 let extract_assign_variables : prog -> (var BatSet.t * var BatSet.t) (* var arr *)
 = fun (args, cmd, res) -> find_variable cmd BatSet.empty BatSet.empty
@@ -77,13 +79,16 @@ and find_component_bexp : bexp -> components -> components
     add_component_bexp (And (BHole (0), BHole(0))) comps
   | _ -> comps
 
-and find_component_cmd : cmd -> components -> components
-= fun cmd comps ->
+and find_component_cmd : cmd -> components -> lv list -> components
+= fun cmd comps lv_comps ->
   match cmd with
   | Assign (x, e) ->
     let comps = find_component_lv x comps in
     let comps = find_component_aexp e comps in 
-    add_component_cmd (Assign (AbsVar, AHole(0))) comps 
+    List.fold_right (fun x comps -> 
+      add_component_cmd (Assign (x, AHole(0))) comps 
+    ) lv_comps comps
+    
     (*begin match x with
     | Var x -> add_component_cmd (Assign (Var "__x__", AHole(0))) comps 
     | Arr (x, e) ->
@@ -91,23 +96,23 @@ and find_component_cmd : cmd -> components -> components
     end*)
     
   | Seq (c1, c2) ->
-    let comps = find_component_cmd c1 comps in
-    let comps = find_component_cmd c2 comps in
+    let comps = find_component_cmd c1 comps lv_comps in
+    let comps = find_component_cmd c2 comps lv_comps in
     add_component_cmd (Seq (CHole (0), CHole(0))) comps
   | If (b, c1, c2) ->
     let comps = find_component_bexp b comps in
-    let comps = find_component_cmd c1 comps in
-    let comps = find_component_cmd c2 comps in
+    let comps = find_component_cmd c1 comps lv_comps in
+    let comps = find_component_cmd c2 comps lv_comps in
     add_component_cmd (If (BHole (0), CHole(0), CHole(0))) comps
   | While (b, c) ->
     let comps = find_component_bexp b comps in
-    let comps = find_component_cmd c comps in
+    let comps = find_component_cmd c comps lv_comps in
     add_component_cmd (While (BHole(0), CHole(0))) comps
   | _ -> comps
 
 (* 식 끌어내기 *)
-let extract_component : prog -> components
-= fun (args, cmd, res) -> find_component_cmd cmd (BatSet.empty, BatSet.empty, BatSet.empty)
+let extract_component : prog -> lv list -> components
+= fun (args, cmd, res) lv_comps -> find_component_cmd cmd (BatSet.empty, BatSet.empty, BatSet.empty) lv_comps
 
 (* 변수 이끌어내기 *)
 let extract_variables : prog -> (var BatSet.t * var BatSet.t) (* var arr *)

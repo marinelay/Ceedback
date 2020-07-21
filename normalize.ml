@@ -149,7 +149,7 @@ let rec arg_num_aexp : aexp -> int
 let rec compare_aexp : aexp -> aexp -> bool
 = fun e1 e2 ->
   match (e1, e2) with
-  | (Int n1, Int n2) -> n1 > n2
+  | (Int n1, Int n2) -> n1 >= n2
   | (Lv lv1, Lv lv2) -> compare_lv lv1 lv2
   | (Lv _, _) -> true
   | (_, Lv _) -> false
@@ -160,8 +160,8 @@ let rec compare_aexp : aexp -> aexp -> bool
 and compare_lv : lv -> lv -> bool
 = fun lv1 lv2 ->
   match (lv1, lv2) with
-  | (Var x1, Var x2) -> x1 > x2
-  | (Arr (x1, _), Arr (x2, _)) -> x1 > x2
+  | (Var x1, Var x2) -> x1 >= x2
+  | (Arr (x1, _), Arr (x2, _)) -> x1 >= x2
   | _ -> true
  
 let rec exp_reorder_aexp : aexp -> aexp
@@ -206,8 +206,8 @@ let expression_reorder : prog -> prog
 let onestep_equivalence : prog -> prog
 = fun pgm ->
 
-  let pgm' = expression_trans pgm in
-  let pgm' = expression_simplification pgm' in  
+  (*let pgm' = expression_trans pgm in*)
+  let pgm' = expression_simplification pgm in  
   let pgm' = expression_reorder pgm' in
   let _ = print_endline (ts_pgm_onerow pgm') in
     pgm'

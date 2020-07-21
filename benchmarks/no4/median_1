@@ -1,0 +1,40 @@
+(* return median *)
+Examples
+2,6,8 -> 6;
+8,3,4 -> 4;
+3,3,3 -> 3;
+4,2,10 -> 4;
+0,2,3 -> 2;
+0,1,0 -> 0;
+0,2,1 -> 1;
+6,2,8 -> 6;
+-1,-1,3 -> -1;
+5,2,2 -> 2;
+
+Partial Program
+fun a, b, c ->
+m = 0;
+if(((a<b)&&(a<c))||((a<b)&&(a>c))) {
+    m = a;
+}
+else {
+    if(((b>a)&&(b<c))||((b<a)&&(b>c))) {
+        m = b;
+    }
+    else { 
+        if (((c>a)&&(c<b))||((c<a)&&(c>b))) {    
+            m = c;
+        }
+    }
+}
+    
+return m;
+
+Int Comps
+0,1
+
+Int Var Comps
+a,b,c,m
+
+Array Var Comps
+none
